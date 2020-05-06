@@ -1,0 +1,191 @@
+
+\subsection*{Pledged assignment}
+This assignment is ``pledged.''
+You can talk to anyone for help with \texttt{git} and \LaTeX{},
+but for the coding portion you may ONLY get help from
+the course instructors and the CMDA computing consultants (\href{https://www.ais.science.vt.edu/cmda/our-program/cmdacomputingconsultants.html}{information here}).
+
+\vspace{8pt}\noindent At the top of your assignment, you will write
+\begin{center}
+``I have neither given nor received unauthorized assistance on this assignment.''
+\end{center}
+
+\subsection*{Instructor-provided code}
+\begin{tcolorbox}[width=\textwidth,colback=green]
+Completing this assignment requires that your code from the previous assignment works correctly.
+If your code from HW 6 does not work well,
+you may use the instructor's version instead.
+This working version is posted on Canvas \href{https://canvas.vt.edu/courses/95914/files/folder/Homework/HW06\%20example}{here}.
+There are two files:
+\begin{itemize}
+    \item \texttt{array.h} which defines a data struct and functions for getting and setting values, construction, a destruction, and finding the mean.
+    \item \texttt{average.c} which defines a function for reading two-dimensional data from a file and a main function that ties everything together.
+\end{itemize}
+You may modify this code in order to complete this assignment.
+\end{tcolorbox}
+
+\subsection*{Assignment overview}
+\vspace{8pt}\noindent In this assignment you will complete your K-means algorithm, test it for memory errors, and visualize its output.
+
+
+\subsubsection*{Summary of workflow}
+
+Here is an outline of how you should process data, start to finish.
+Later sections describe details of each step as well as separate tasks like checking for memory errors.
+\begin{enumerate}
+    \item Your C program reads the data from the file provided.
+    \item Your C program uses k-means to create clusters with the data.
+    \item Your C program writes the cluster information to a file in a format that will compile in \LaTeX{}.
+    \item Your tex document uses the cluster file as input to create a colored scatter plot.
+\end{enumerate}
+
+\subsubsection*{Data file format}
+
+The data files you will receive will have the same format as in HW 6.
+As a reminder, the files will have the following format:
+\begin{itemize}
+    \item \underline{Line 1}: A text header that should be read but ignored by your program.
+    \item \underline{Line 2}: A number telling you how many lines of data there are.
+    \item \underline{Line 3}:  A text header that should be read but ignored by your program.
+    \item \underline{All other lines}: The data, where each line consists of two decimal numbers with one space between them.
+    For example, the file may look like this:
+    \begin{verbatim}
+        <Number of data lines>
+        3
+        <Data>
+        0.12345 6.78910
+        3.14159 -2.0002
+        1.41421 0.99999
+    \end{verbatim}
+\end{itemize}
+
+\subsubsection*{\LaTeX{} Plotting}
+
+You will use \LaTeX{} to produce a scatter plot for visualizing your data and assigned clusters.
+An example of a \LaTeX{}-produced plot is found in \href{https://canvas.vt.edu/courses/95914/files/folder/Homework/LaTex\%20Plotting\%20Example#}{this directory on Canvas}.
+You should look at these files:
+\begin{itemize}
+    \item \texttt{scatterdata.txt}: A data file with columns specifying the x and y coordinates of points and the cluster number that they belong to.
+    Your C code will write a file like this for your own data using the clusters that you determine with k-means.
+    \item \texttt{scatter.tex}: A small file showing how to make \LaTeX produce a scatter plot.
+    Copy the \texttt{usepackage} statement into your preamble.
+    Copy the \texttt{tikzpicture} portion into the tex file of your own final report.
+    Modify the title, colors, and axis size to look good.
+    \item \texttt{scatter.pdf}: The document produced by \texttt{scatter.tex} with the data from \texttt{scatterdata.txt}.
+\end{itemize}
+
+\subsubsection*{Implementation}
+
+\begin{tcolorbox}[width=\textwidth,colback=green]
+To helps us find and test your code, your main C file should be \texttt{HW07/kmeans.c} (a file named \texttt{kmeans.c} in a directory named \texttt{HW07}).
+\end{tcolorbox}
+You should write a C program that does the following:
+\begin{enumerate}
+    \item[Q1:] (5pts) Take a filename AND a number of clusters as input from the command line,
+    read the data from the file,
+    and store the information in a \texttt{struct} that you design.
+    
+    The data filename should be the first command line parameter followed by the number of clusters.
+    For example, if your executable file is called \texttt{kmeans},
+    the command
+    \begin{tsession}{mytermbg}
+    \begin{verbatim}
+./kmeans test.dat 7\end{verbatim}
+    \end{tsession}
+    should read \texttt{test.dat} and make 7 clusters with the data.
+    \item[Q2:] (30pts) Perform the K-means algorithm (Lloyd's algorithm variant) on the data to make the given number of clusters.
+    \item[Q3:] (10pts) Write the cluster information to a file using the format of \texttt{scatterdata.txt} in the \LaTeX{} plotting example above.
+    This file will be used as input in the tex code of your report.
+\end{enumerate}
+
+\subsubsection*{Coding style}
+
+\begin{itemize}
+    \item[Q4:] (10pts) Write your code with good style.
+    A large discussion of C style is available \href{https://users.ece.cmu.edu/~eno/coding/CCodingStandard.html}{here}.
+    The most important points that we will look for are
+    \begin{itemize}
+        \item \emph{Variable names}:
+        give descriptive names to functions and important variables.
+        Their names should relate to their purposes.
+        \item \emph{Comments}:
+        use comments to explain important sections of your code.
+        \item \emph{White-space}:
+        use matching indentation to emphasize code blocks (e.g. the bodies of loops and functions).
+        Use line breaks to visually group closely related lines.
+        \item \emph{Code block length}:
+        code blocks should not be excessively long.
+        If a function or loop is longer than about 20 statements,
+        there is probably a good way to put some of that code into a sub-function with a descriptive name.
+        \item \emph{Flexible code}:
+        Your code should be able to handle input that is different from what we have asked for.
+        In particular, your code should use the heap in order to be able to handle large files.
+        It should also be able to run on (properly formatted) files of different sizes (so do not ``hard code'' a number of lines for the file).
+    \end{itemize}
+\end{itemize}
+
+\subsubsection*{Testing}
+
+Instructors will use Git to push two files into a directory called \texttt{HW07} in your repository on \href{http://code.vt.edu}{code.vt.edu}.
+These files are
+\begin{itemize}
+    \item  \texttt{test.dat}: a data file with the format shown above.
+    \item \texttt{instructions.txt}: a text file telling you how many clusters you should make.
+    Open this file and read it with your eyes.
+    Use the stated number of clusters as an input for your program.
+\end{itemize}
+You will need to use \texttt{git pull} to bring the files in your local repository.
+
+\begin{itemize}
+    \item[Q5:] (5pts) Run your program.
+    Use the command line arguments \texttt{test.dat} and the number of clusters specified in \texttt{instructions.txt}.
+    The output file will be used for your report.
+\end{itemize}
+
+\subsubsection*{Memory errors}
+
+When using pointers and \texttt{malloc},
+programmers need to be careful not to misuse memory
+or fail to \texttt{free} memory that they allocated.
+
+Valgrind is a tool for checking programs for memory errors.
+You can install it with \texttt{apt-get} as usual:
+\begin{tsession}{mytermbg}
+\begin{verbatim}
+sudo apt-get valgrind
+\end{verbatim}
+\end{tsession}
+To use Valgrind, simply put \texttt{valgrind} in front of your command to run your program.
+If your executable is called \texttt{go} and you want to make 7 clusters out of the data in \texttt{test.dat},
+you can check for memory errors with the command
+\begin{tsession}{mytermbg}
+\begin{verbatim}
+valgrind ./kmeans test.dat 7
+\end{verbatim}
+\end{tsession}
+
+\begin{itemize}
+    \item[Q6:] (10pts) Run your program again with Valgrind.
+    No leaks or errors should be reported.
+\end{itemize}
+
+\subsubsection*{Submission}
+
+\begin{itemize}
+    \item[Q7:] (10pts) Include the following in your \LaTeX{} typeset report:
+\begin{itemize}
+    \item Your C code formatted using the \texttt{minted} environment.
+    \item A color-coded plot of your clusters.
+    Use the plotting features of \LaTeX{} explained in class to plot the data and the centers of the clusters you made.
+    Each point that is in the same cluster should be plotted in the same color.
+    Points in different clusters should be plotted in different colors.
+    \item The output of Valgrind checking your code.
+\end{itemize}
+\end{itemize}
+Submit your assignment as follows:
+\begin{itemize}
+    \item Upload your PDF and tex files to Canvas.
+    Be sure to include the data cluster file that your C program produces for plotting.
+    \item Submit the C source file by pushing it to your git repository on \href{http://code.vt.edu}{code.vt.edu}.
+    You may not receive any credit if your code is not in your repository.
+\end{itemize}

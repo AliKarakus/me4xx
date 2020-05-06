@@ -1,0 +1,116 @@
+
+
+    
+    \hypertarget{hello-pyopencl}{%
+\subsection{Hello PyOpenCL}\label{hello-pyopencl}}
+
+    \begin{BGVerbatim}[commandchars=\\\{\}]
+{\color{incolor}In [{\color{incolor}1}]:} \PY{k+kn}{import} \PY{n+nn}{pyopencl} \PY{k}{as} \PY{n+nn}{cl}
+        \PY{k+kn}{import} \PY{n+nn}{numpy} \PY{k}{as} \PY{n+nn}{np}
+        \PY{k+kn}{import} \PY{n+nn}{numpy}\PY{n+nn}{.}\PY{n+nn}{linalg} \PY{k}{as} \PY{n+nn}{la}
+        
+        \PY{n}{mf} \PY{o}{=} \PY{n}{cl}\PY{o}{.}\PY{n}{mem\PYZus{}flags}
+\end{BGVerbatim}
+
+    This notebook demonstrates the simplest PyOpenCL workflow that touches
+all essential pieces:
+
+\begin{itemize}
+\tightlist
+\item
+  Data transfer
+\item
+  Kernel compilation
+\item
+  Execution
+\end{itemize}
+
+    \begin{BGVerbatim}[commandchars=\\\{\}]
+{\color{incolor}In [{\color{incolor}2}]:} \PY{n}{a} \PY{o}{=} \PY{n}{np}\PY{o}{.}\PY{n}{random}\PY{o}{.}\PY{n}{rand}\PY{p}{(}\PY{l+m+mi}{50000}\PY{p}{)}\PY{o}{.}\PY{n}{astype}\PY{p}{(}\PY{n}{np}\PY{o}{.}\PY{n}{float32}\PY{p}{)}
+\end{BGVerbatim}
+
+    Now create a context.
+
+    \begin{BGVerbatim}[commandchars=\\\{\}]
+{\color{incolor}In [{\color{incolor}3}]:} \PY{n}{ctx} \PY{o}{=} \PY{n}{cl}\PY{o}{.}\PY{n}{create\PYZus{}some\PYZus{}context}\PY{p}{(}\PY{n}{interactive}\PY{o}{=}\PY{k+kc}{True}\PY{p}{)}
+        
+        \PY{n}{queue} \PY{o}{=} \PY{n}{cl}\PY{o}{.}\PY{n}{CommandQueue}\PY{p}{(}\PY{n}{ctx}\PY{p}{)}
+\end{BGVerbatim}
+
+    \begin{BGVerbatim}[commandchars=\\\{\}]
+Choose platform:
+[0] <pyopencl.Platform 'Portable Computing Language' at 0x7f7e2dfa3020>
+Choice [0]:0
+Set the environment variable PYOPENCL\_CTX='0' to avoid being asked again.
+
+    \end{BGVerbatim}
+
+    Now allocate a buffer.
+\texttt{Buffer(context,\ flags,\ size=None,\ hostbuf=None)}
+
+    \begin{BGVerbatim}[commandchars=\\\{\}]
+{\color{incolor}In [{\color{incolor}4}]:} \PY{n}{a\PYZus{}buf} \PY{o}{=} \PY{n}{cl}\PY{o}{.}\PY{n}{Buffer}\PY{p}{(}\PY{n}{ctx}\PY{p}{,} \PY{n}{mf}\PY{o}{.}\PY{n}{READ\PYZus{}WRITE}\PY{p}{,} \PY{n}{size}\PY{o}{=}\PY{n}{a}\PY{o}{.}\PY{n}{nbytes}\PY{p}{)}
+\end{BGVerbatim}
+
+    Then transfer data:
+
+    \begin{BGVerbatim}[commandchars=\\\{\}]
+{\color{incolor}In [{\color{incolor}5}]:} \PY{n}{cl}\PY{o}{.}\PY{n}{enqueue\PYZus{}copy}\PY{p}{(}\PY{n}{queue}\PY{p}{,} \PY{n}{a\PYZus{}buf}\PY{p}{,} \PY{n}{a}\PY{p}{)}
+\end{BGVerbatim}
+
+\begin{BGVerbatim}[commandchars=\\\{\}]
+{\color{outcolor}Out[{\color{outcolor}5}]:} <pyopencl.\_cl.NannyEvent at 0x7f7e2e051ba0>
+\end{BGVerbatim}
+            
+    Here's our kernel source code:
+
+    \begin{BGVerbatim}[commandchars=\\\{\}]
+{\color{incolor}In [{\color{incolor}6}]:} \PY{n}{prg} \PY{o}{=} \PY{n}{cl}\PY{o}{.}\PY{n}{Program}\PY{p}{(}\PY{n}{ctx}\PY{p}{,} \PY{l+s+s2}{\PYZdq{}\PYZdq{}\PYZdq{}}
+        \PY{l+s+s2}{    \PYZus{}\PYZus{}kernel void twice(\PYZus{}\PYZus{}global float *a)}
+        \PY{l+s+s2}{    }\PY{l+s+s2}{\PYZob{}}
+        \PY{l+s+s2}{      int gid = get\PYZus{}global\PYZus{}id(0);}
+        \PY{l+s+s2}{      a[gid] = 2*a[gid];}
+        \PY{l+s+s2}{    \PYZcb{}}
+        \PY{l+s+s2}{    }\PY{l+s+s2}{\PYZdq{}\PYZdq{}\PYZdq{}}\PY{p}{)}\PY{o}{.}\PY{n}{build}\PY{p}{(}\PY{p}{)}
+\end{BGVerbatim}
+
+    Run the kernel.
+
+    \begin{BGVerbatim}[commandchars=\\\{\}]
+{\color{incolor}In [{\color{incolor}7}]:} \PY{n}{prg}\PY{o}{.}\PY{n}{twice}\PY{p}{(}\PY{n}{queue}\PY{p}{,} \PY{n}{a}\PY{o}{.}\PY{n}{shape}\PY{p}{,} \PY{k+kc}{None}\PY{p}{,} \PY{n}{a\PYZus{}buf}\PY{p}{)}
+\end{BGVerbatim}
+
+\begin{BGVerbatim}[commandchars=\\\{\}]
+{\color{outcolor}Out[{\color{outcolor}7}]:} <pyopencl.\_cl.Event at 0x7f7e2e016e08>
+\end{BGVerbatim}
+            
+    Copy the data back.
+
+    \begin{BGVerbatim}[commandchars=\\\{\}]
+{\color{incolor}In [{\color{incolor}8}]:} \PY{n}{result} \PY{o}{=} \PY{n}{np}\PY{o}{.}\PY{n}{empty\PYZus{}like}\PY{p}{(}\PY{n}{a}\PY{p}{)}
+        
+        \PY{n}{cl}\PY{o}{.}\PY{n}{enqueue\PYZus{}copy}\PY{p}{(}\PY{n}{queue}\PY{p}{,} \PY{n}{result}\PY{p}{,} \PY{n}{a\PYZus{}buf}\PY{p}{)}
+\end{BGVerbatim}
+
+\begin{BGVerbatim}[commandchars=\\\{\}]
+{\color{outcolor}Out[{\color{outcolor}8}]:} <pyopencl.\_cl.NannyEvent at 0x7f7e2e016e60>
+\end{BGVerbatim}
+            
+    Check the result.
+
+    \begin{BGVerbatim}[commandchars=\\\{\}]
+{\color{incolor}In [{\color{incolor}9}]:} \PY{n+nb}{print}\PY{p}{(}\PY{n}{la}\PY{o}{.}\PY{n}{norm}\PY{p}{(}\PY{n}{result} \PY{o}{\PYZhy{}} \PY{l+m+mi}{2}\PY{o}{*}\PY{n}{a}\PY{p}{)}\PY{p}{,} \PY{n}{la}\PY{o}{.}\PY{n}{norm}\PY{p}{(}\PY{n}{a}\PY{p}{)}\PY{p}{)}
+\end{BGVerbatim}
+
+    \begin{BGVerbatim}[commandchars=\\\{\}]
+0.0 129.3472
+
+    \end{BGVerbatim}
+
+    \begin{BGVerbatim}[commandchars=\\\{\}]
+{\color{incolor}In [{\color{incolor} }]:} 
+\end{BGVerbatim}
+
+
+    % Add a bibliography block to the postdoc
+    

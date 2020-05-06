@@ -1,0 +1,167 @@
+
+\begin{center}
+\textcolor{red}{This entire assignment is extra credit.}
+\end{center}
+
+\subsection*{Task 1}
+
+\begin{itemize}
+    \item[Q 1] (1pt  per 3 tools listed) Make an ALPHABETIZED list of the tools that were part of this class curriculum.
+    This can include
+    \begin{itemize}
+        \item Websites that you were asked to use. There are only a few of these.
+        \item The many Linux programs and coding tools introduced during the course. 
+        \begin{itemize}
+            \item Little ones like ``\texttt{cd}'' count. There's one for free :-).
+            \item Different options for the same program don't count. Git is a program (so it counts), but \texttt{git push} is just a particular command (which doesn't count).
+            \item You can only get credit for one particular text editor :-P.
+        \end{itemize}
+    \end{itemize}
+    \item[] Hint: The instructors were able to think of 34 items.
+\end{itemize}
+
+
+\begin{table} %[htbp!]
+    \centering
+    \footnotesize
+    \begin{tabular}{@{\makebox[3em][r]{\rownumber\space}}|l|l} \hline
+    Command & Purpose \gdef\rownumber{\stepcounter{magicrownumbers}\arabic{magicrownumbers}} \\ \hline %\endfirsthead
+ %\begin{multicolumn}{l|l|l}
+        \texttt{apt-get} & terminal package manager (\texttt{apt} also ok)\\
+        \texttt{ascii} & display ASCII character encoding \\
+        \texttt{bg} & background a task  \\
+        \texttt{cat} & concatenate file(s)\\
+        \texttt{cd} & change directory  \\
+        \texttt{chmod} & change file attributes \\
+        \texttt{convert} & ImageMagick image format conversion tool \\
+        \texttt{cp} & copy file(s) and/or directories  \\
+         \texttt{ctrl-a} & start of command line \\
+        \texttt{ctrl-c} & kill task \\
+         \texttt{ctrl-e} & end of command line \\
+         \texttt{ctrl-k} & kill rest of line into clipboard \\
+         \texttt{ctrl-l} & clear terminal (also \texttt{clear}) \\
+         \texttt{ctrl-y} & yank contents from clipboard \\
+        \texttt{ctrl-z} & suspend task\\
+        \texttt{emacs} & the acceptable text editor\\
+        \texttt{evince} & document viewer  \\
+        \texttt{exit} & exit out of terminal or ssh \\
+        \texttt{export} & set bash environment variable \\
+        \texttt{fg} & foreground task  \\
+        \texttt{for} & bash for loop\\
+        \texttt{gcc} & GNU C compiler\\
+        \texttt{gdb} & GNU code debugger\\
+        \texttt{git} & repository management\\
+        \texttt{gitk} & Git repository timeline visualization\\
+        \texttt{gnome-screenshot} & screenshot tools (other snapshot tools acceptable) \\
+        \texttt{gprof} & GNU profiler\\
+        \texttt{grep} & search for pattern(s) in file(s) \\
+        \texttt{gzip} & manage compressed files \\
+        \texttt{head} & display lines from top of file\\
+        \texttt{hipcc} & AMD HIP C compiler\\
+        \texttt{history} & list history of commands \\
+        \texttt{icc} & Intel C compiler\\
+        \texttt{icpc} & Intel C++ compiler\\
+        \texttt{interact} & ARC slurm interactive job request\\
+        \texttt{jumpshot} & MPI timeline visualization  \\
+         \texttt{kill} & kill processes\\
+        \texttt{less} & text file viewer  \\
+        \texttt{ls} & list contents of  directory  \\
+        \texttt{lscpu} & list CPUs  \\
+        \texttt{make} & GNU makefile processor \\
+        \texttt{man} & manual page of command \\
+        \texttt{mkdir} & make new directory \\
+         \texttt{module} & module/package manager used by ARC \\
+         \texttt{mpecc} & Message Passing environment enabled C compiler \\
+        \texttt{mpicc} & MPI C compiler \\
+        \texttt{mpiexec} & MPI process launcher \\
+        \texttt{mpirun} & MPI process runner \\
+        \texttt{nvcc} & NVIDIA CUDA compiler\\
+        \texttt{nvprof} & NVIDIA profiler\\
+        \texttt{octave} & math tool similar to MATLAB\\
+        \texttt{ps} & list processes\\
+        \texttt{pwd} & present working directory\\
+
+       \texttt{python} & Python language interpreter (or Python3) \\
+        \texttt{qstat} & Check status of parallel job manager \\
+        \texttt{R} & Statistical package \\
+        \texttt{rm} & remove files and/or directories \\
+        \texttt{rmdir} & remove existing directory \\
+        \texttt{salloc} & slurm job request\\
+        \texttt{sbatch} & slurm batch job request\\
+        \texttt{scancel} & slurm job cancel\\
+        \texttt{scp} & secure copy \\
+        \texttt{ssh} & secure shell logon\\
+        \texttt{ssh-keygen} & secure shell public/private key generator \\
+        \texttt{sudo} & do command as super-user\\
+        \texttt{tail} & display lines from end of file \\
+        \texttt{tar} & manage archive files \\
+        \texttt{top} & display active tasks \\
+        \texttt{ulimit} & list user limits, for instance maximum stack size \\
+        \texttt{valgrind} & memory error checker\\
+        \texttt{wc} & count words/lines/characters in a file \\
+        \texttt{wget} & retrieve file(s) from web address \\
+    \hline 
+  %  \end{multicolumn}
+    \end{tabular}
+ %   \caption{HW12: Task \#1 list of commands introduced in CMDA 3634 Fall 2019}
+\end{table}
+
+\newpage
+\subsection*{Task 2}
+\begin{itemize}
+\item [Q2] (15 points) Update your \LaTeX{} CV from Homework 4 to include skills learned in this class. Indicate concisely your level of proficiency in each area. Include an entry in your list of projects that details your technical achievements in completing the k-means project.
+\end{itemize}
+
+\subsection*{Task 3}
+CUDA GPU code for k-means can be found in the class repository in \texttt{tcew3634/L27/kmeansCuda/}.
+\begin{itemize}
+\item [Q3] (10 points)
+Compare the CUDA GPU code to MPI for k-means on different problem sizes.
+Does GPU always win?
+Do you even have data big enough for it to ever win?
+YOU MUST COMMENT on your findings.
+\begin{itemize}
+    \item Remember NOT to include file read/write operations in your timings.
+    \item Since k-means may iterate different numbers of times on different data sets,
+    find the average runtime per k-means iteration.
+    If the runtime was 2 seconds and k-means had to move centroids 20 times, then you should report 0.1 seconds per iteration.
+\end{itemize}
+\end{itemize}
+In order to generate suitable datasets of different sizes, use the Python script \href{https://canvas.vt.edu/files/11774764/download?download_frd=1}{here}.
+You will need to edit the Python file to change the number of points generated and the name of the output file.
+Leave the number of clusters the same (12).
+As usual, you will need to pass 12 as a command line parameter to your k-means program.
+
+\subsection*{Submission}
+
+\begin{itemize}
+\item[Q4] (5pts) Submit your work as follows.
+    \begin{itemize}
+        \item Combine your work for Tasks 1 and 3 into a single document.
+        \begin{itemize}
+            \item Task 2 may appear in a separate document. It may be difficult to include your CV in the same document as the other tasks if you used a template for your CV.
+        \end{itemize}
+        \item For Task 1, make an ALPHABETIZED list of the tools you remembered.
+        \begin{itemize}
+            \item Each item should appear on its own line.
+            \item Typeset your list with \LaTeX{}.
+        \end{itemize}
+        \item For Task 2, typeset your CV with \LaTeX{}.
+        \item For Task 3, write a report on your results and typeset it with \LaTeX{}.
+        \begin{itemize}
+            \item  In addition to your comments, your report should include a completed table of runtimes similar to the one below.\\[10pt]
+            \begin{tabular}{c|c|c}
+Number of points & CUDA Runtime (seconds per iteration) & MPI Runtime\\
+\hline\hline
+100 & \\
+\hline
+1,000 & \\
+\hline
+10,000 & \\
+\hline
+100,000 & \\
+\vdots & \vdots & \vdots
+            \end{tabular}
+        \end{itemize}
+    \end{itemize}
+\end{itemize}

@@ -1,0 +1,287 @@
+\chapterauthor{Tim Warburton}
+
+\epigraph{If debugging is the process of removing bugs, then programming must be the process of putting them in}{Edsger W. Dijkstra}
+
+\epigraph{It's hard enough to find an error in your code when you're looking for it; it's even harder when you've assumed your code is error-free.}{Steve McConnell}
+
+\minitoc
+
+\section{Debugging tips}
+
+In this section we give common sense debugging strategies and a checklist of problems to look for when debugging a code. The list is by no means comprehensive because there are more ways to make a code buggy as there are ways to write a correct code.
+
+\begin{enumerate}
+   
+   \item {\bf Typos}: You introduced a typo in code and the compiler will not compile your code. Scrutinize the compiler errors and warnings starting with the first one.  A systematic approach is to review each compiler error one at a time starting with the first error in the compiler output. Fixing the first error may actually fix a slew of subsequent errors. The compiler is not judging your character when it emits an error, and it is a private process so do not be afraid to iteratively fix bugs with several compile-then-edit steps.
+   
+   Common syntactical typos include:
+   \begin{enumerate}
+       \item Missing a semi-colon at the end of a line of code or command.
+       \item Missing curly braces: \texttt{\{} or \texttt{\}}. Fortunately \texttt{emacs} and other so-called text editors can give you clues about what braces are needed to close a code section.
+       \item Not using proper code indentation (for instance not using the auto-indentation feature in \texttt{emacs}) will obscure the code block structure of your code.
+       \item Incorrect spelling of variable names, function names, or C language keywords.
+       \item Failing to terminate a C comment by not pairing the \texttt{/*} with \texttt{*/}. 
+       \item Be careful not to nest \texttt{/* ... */}  comments !
+       \item Using the wrong variable name. 
+       \item Try to avoid the lower case \texttt{l} variable, it looks too much like the number one in many editors.
+    \end{enumerate}
+       
+    \item {\bf Variable type errors}: C is a strongly typed language. We have seen repeatedly that integer arithmetic can cause problems, in particular when dividing integer by integer. 
+       
+    \item {\bf Functions}: many bugs can creep in when writing or calling functions.
+    \begin{enumerate}
+       \item Calling the wrong function.
+       \item Providing the wrong list of arguments to a function.
+       \item Providing the right arguments but in the wrong order. 
+       \item Providing arguments with the wrong type (e.g. \texttt{int} instead of \texttt{double}).
+       \item Misunderstanding exactly what a function does. It is important to document your own functions, for instance by adding comments about input, output, and purpose.  If you use a function from a third party library you need to scrutinize the documentation. 
+       \item Forgetting to \texttt{return} a value from a function that is supposed to return a value by design. 
+       \item Not checking error codes returned from a function.
+       \item Stale comments that obscure the actual purpose of a function.
+       \item Providing the pointer to a pointer as an argument to a function when you only need to provide the pointer itself.
+       \item Forgetting that C passes variable values to functions by copy. If you pass a variable by copy, and the function changes the value of the copy, then the original paased variable will not change.
+       \item Neglecting to provide a function prototype to a function, by for instance forgetting to include a header file including the function prototype. If a function is not in scope of the calling site (i.e. defined or prototyped above the call site) then the C compiler assumes that the return argument and input arguments are of \texttt{int} type.
+   \end{enumerate}
+   
+   \item {\bf Heap memory errors}: C exposes direct access to system memory. This is a strength in terms of code performance but also a weakness in terms of creating many ways to make mistakes.
+   \begin{enumerate}
+       \item Failing to allocate a heap array and leaving a pointer uninitialized. 
+       \item Trying to allocate a heap array with \texttt{malloc} or \texttt{calloc} but receiving a \texttt{NULL} pointer because there was insufficient available heap space. Trying to dereference a \texttt{NULL} pointer will cause a segmentation fault. 
+       \item Allocating a heap array with insufficient number of bytes because your array length calculation was wrong.
+       \item Trying to read a heap array entry outside the allocated array space. This so-called bounds error will yield garbage values.
+       \item Trying to write to a heap array entry outside of the allocated array space. This is a more serious array bounds error as it may change the value of some other heap array. This can cause silent errors that are only exposed when the other heap array is changed in a critical way.
+       \item The most common cause of array error bounds is incorrectly forming the array index. Check your index arithmetic !
+       \item Failing to \texttt{free} a heap array. Although this might not cause problems for your testing, leaking memory in this way may cause problems if the program runs long enough that eventually allocating new arrays is not possible because you have used all available heap space.
+       
+   \end{enumerate}
+   The above issues may be detected by using the \texttt{valgrind} memory checking tool described later in this lecture.
+    \item {\bf The compiler did it}: It is only human to think that your code is perfect and that the compiler must have misunderstood your code and made a compilation error. This is almost never the case. However, just once in a while a compiler optimization subtly introduce unexpected behavior. If the code generates different results with optimization turned on and off then it is likely your issue.
+    
+    \item {\bf The CPU must be bad}: Very, very rarely  there is a CPU hardware bug. An infamous example is the Intel Pentium CPU floating point division (FDIV) bug (see \href{https://en.wikipedia.org/wiki/Pentium_FDIV_bug}{wiki}). Hardcoded values used in specialized hardware floating point unit division  were incorrect leading to inaccurate results from division operations for some denominators. 
+    
+    \center{\underline{It is highly unlikely that a CPU hardware bug is responsible for your coding error.}
+    \underline{This is almost certainly not the root cause of your problem.}}
+\end{enumerate}
+
+The bottom line is that you have to be very detail oriented when writing code. The compiler expects precision and is not in the business of fixing your code for you ! In the following sections we describe how to use the GNU debugger \texttt{gdb} and the memory checking tool \texttt{valgrind} to try to find the errors that the compiler does not flag.
+
+\section{Debugging problems with the GNU debugger \texttt{gdb}}
+
+%% run, break, list, print, continue, where, up, down, next, step, quit, watch
+
+For as long as people have been programming they have been creating bugs. There is some entertaining background on software bugs \href{https://en.wikipedia.org/wiki/Software_bug}{here}. Fortunately there are some useful tools that can help find bugs in code. The GNU debugger, \texttt{gdb} for short, is a command line tool that allows you to troubleshoot issues with a code interactively. \texttt{gdb} is included in the \texttt{gcc} package. 
+
+{\bf Note \#1}: one prerequisite for using \texttt{gdb} is that your program compiles.
+
+{\bf Note \#2}: the debugger is not magic, it is simply a tool that might help you to diagnose a coding error.
+
+Running your program within \texttt{gdb}  you can interactively step line by line to do some detective work about what might be wrong. When you are working with a non-trivial code with deep call stacks being able to insert break points in certain functions and stop execution there can be invaluable. Likewise it can be helpful to  print out the values of variables when your code is in a function deep in the call stack.
+
+The first step in preparing your code for debugging is to compile your code with the \texttt{-g} command line argument. This instructs the compiler to include the original source code into the executable. The following shows how to compile with debugging information and then launch a sample code with \texttt{gdb}
+
+\myvbox[mytermbg]{gcc -g -o debugExample debugExample.c \\
+gdb ./debugExample \\
+GNU gdb (Ubuntu 8.1-0ubuntu3) 8.1.0.20180409-git\\
+...\\
+Reading symbols from ./debugExample...done.\\
+(gdb)
+}
+At this point the debugger has started. It is waiting for your input at the \texttt{(gdb)} prompt.
+
+In this example I have loaded the \texttt{debugExample} executable compiled from this source code
+\begin{minted}{c}
+/* L10/debuggingExample.c */
+#include <stdio.h>
+
+float otherFunction(float a){
+  float b = 3.2*a;
+  return b;
+}
+
+float someFunction(float a){
+  int b = 2*otherFunction(a);
+  return b;
+}
+
+int main(int argc, char **argv){
+  float a = 1.2;
+  float b = someFunction(a);
+
+  printf("a=%f, b=%f\n", a, b);
+  return 0;
+}
+\end{minted}
+
+There is something wrong with this code. It should print out \texttt{a=1.2, b=7.68}. We can run it from inside \texttt{gdb} and it actually prints out 
+\myvbox[mytermbg]{(gdb) run\\
+Starting program: /home/tcew/course/L09/debugExample \\
+a=1.200000, b=7.000000
+}
+You can probably figure out what is going on by carefully reading the code, but we can use \texttt{gdb} to see what might be going wrong. 
+
+To start I set a ``breakpoint'' in \texttt{main} and then start \texttt{gdb} running the code as follows.
+\myvbox[mytermbg]{(gdb) break main\\
+Breakpoint 1 at 0x5555555546b2: file debugExample.c, line 14.\\
+(gdb) run \\
+Starting program: /home/tcew/course/L09/debugExample \\
+\\
+Breakpoint 1, main (argc=1, argv=0x7fffffffe0a8) at debugExample.c:14 \\
+14	  float a = 1.2; \\
+(gdb)
+}
+The debugger stops execution at the first executable statement in the function where the breakpoint is set. Here the debugger has stopped at the line where the variable \texttt{a} is iniitialized. You can see the next few lines of  code by typing \texttt{list}
+
+\myvbox[mytermbg]{(gdb) list \\
+9\;\;\;\;	  int b = 2*otherFunction(a);\\
+10\;\;\;	  return b;\\
+11\;\;\;	\}\\
+12\;\;\;	\\
+13	int main(int argc, char **argv)\{\\
+14\;\;\;	  float a = 1.2;\\
+15\;\;\;	  float b = someFunction(a);\\
+16	\\
+17\;\;\;	  printf("a=%f, b=%f\n", a, b);\\
+18\;\;\;	  return 0;
+}
+
+We can step through line by line as the code is executed
+using the \texttt{step} command. In the following code I type step and every time I press enter the debugger either processes the next line of code or steps into the function if the statement is a function call. 
+\myvbox[mytermbg]{(gdb) step\\
+15	  float b = someFunction(a); \\
+(gdb)\\
+someFunction (a=1.20000005) at debugExample.c:9\\
+9	  int b = 2*otherFunction(a);\\
+(gdb) \\
+otherFunction (a=1.20000005) at debugExample.c:4 \\
+4	  float b = 3.2*a;\\
+(gdb) \\
+5	  return b;\\
+(gdb) \\
+6 \}\\
+(gdb) \\
+someFunction (a=1.20000005) at debugExample.c:10\\
+10	  return b;\\
+(gdb) \\
+11 \}\\
+(gdb) \\
+}
+Thus we have seen the sequence of statements and functions calls that have been made prior to the \texttt{printf} statement and we didn't need to read the code to figure the sequence out. 
+
+We will suppose that something went wrong in the function named \texttt{someFunction} and stop the debugger executing use the \texttt{break} command as before. When we \texttt{run} the code will first stop in \texttt{main} at the first breakpoint. We type \texttt{cont} and the debugger will continue until the second breakpoint.
+
+\myvbox[mytermbg]{(gdb) break otherFunction \\
+Breakpoint 2 at 0x653: file debugExample.c, line 4.\\
+(gdb) run\\
+Starting program: /home/tcew/course/L09/debugExample 
+\\
+Breakpoint 1, main (argc=1, argv=0x7fffffffe0a8) at debugExample.c:14 \\
+14	  float a = 1.2; \\
+(gdb) cont \\
+Continuing.\\
+\\
+Breakpoint 2, otherFunction (a=1.20000005) at debugExample.c:4 \\
+4	  float b = 3.2*a;\\
+(gdb) 
+}
+We can then print the values of the variables using the \texttt{print} command and step to the next line using the \texttt{next} command.
+\myvbox[mytermbg]{Breakpoint 2, otherFunction (a=1.20000005) at debugExample.c:4\\
+4	  float b = 3.2*a;\\
+(gdb) print a\\
+\$1 = 1.20000005\\
+(gdb) next\\
+5	  return b;\\
+(gdb) print b\\
+\$2 = 3.84000015\\
+(gdb)
+}
+And so far this all seems good. We can see where we are in the call stack using the \texttt{where} command.
+\myvbox[mytermbg]{(gdb) where\\
+\#0  otherFunction (a=1.20000005) at debugExample.c:5\\
+\#1  0x0000555555554691 in someFunction (a=1.20000005) at debugExample.c:9 \\
+\#2  0x00005555555546cf in main (argc=1, argv=0x7fffffffe0a8) at debugExample.c:15 \\
+(gdb) 
+}
+This is a stack trace showing the arguments to each of the functions in the call stack. We see we are two functions down the stack from the \texttt{main} function. So the mystery continues. We can advance the code to return from the \texttt{otherFunction}.
+\myvbox[mytermbg]{(gdb) next\\
+someFunction (a=1.20000005) at debugExample.c:10 \\
+10	  return b;\\
+(gdb) where\\
+\#0  someFunction (a=1.20000005) at debugExample.c:10\\
+\#1  0x00005555555546cf in main (argc=1, argv=0x7fffffffe0a8) at debugExample.c:15\\
+(gdb) print b\\
+\$3 = 7
+}
+So something weird happened. A floating point number was returnedd from \texttt{otherFunction} but turned into an integer inside \texttt{someFunction}. Looking at the code for \texttt{someFunction} andd we see that the \texttt{b} variable is actually an \texttt{int}, i.e. an integer. That wasn't my original intent, bug found !
+
+\subsection{Summary of \texttt{gdb} commands}
+
+Summary of \texttt{gdb} commands discussed above plus a few extra commands for navigating the call stack.
+\begin{table}[htbp!]
+    \centering
+    \begin{tabular}{l|l} \hline
+      Action &\texttt{gdb} command\\ \hline
+         Start running &  \texttt{run [COMMAND LINE ARGUMENTS]}\\ 
+         Add a breakpoint in [FUNCTION] &  \texttt{break [FUNCTION]}\\
+         Continue running after breakpoint &  \texttt{cont}\\
+         Print value of [VARIABLE NAME] & \texttt{print [VARIABLE NAME]} \\
+         Process next statement & \texttt{next} \\
+         Step into next function or process next step & \texttt{step} \\
+         Print call stack trace & \texttt{where} \\
+         List next few lines of code & \texttt{list} \\
+         Move up the call stack & \texttt{up} \\
+         Mode down the call stack & \texttt{down} \\
+         Quite debugger & \texttt{quit} \\
+    \hline\end{tabular}
+    \caption{Summary of commonly used \texttt{gdb} commands discussed above.}
+    \label{terminalCommands.tab}
+\end{table}
+
+{\bf Note}: you can just use the first letter of each command instead of the whole command.
+
+\section{Using the \texttt{valgrind} memory checker}
+
+\href{http://valgrind.org}{valgrind} is an invaluable tool for detecting memory errors including heap bounds access errors, leaked heap arrays, and attempting to free previously freed arrays. It works by intercepting systems calls including memory accesses and doing the type of error handling that we added to the \texttt{array} functions. Unfortunately this might significantly prolong the time it takes to run a program.
+
+We can run the \texttt{array} program by the following steps. First make sure that \texttt{valgrind} is installed the first time you need it with
+
+\myvbox[mytermbg]{sudo apt-get install valgrind}
+
+then we compile with the compiler debugging flag
+\myvbox[mytermbg]{\# add debugging info to include line numbers \\ gcc -g -I. -o arrayMain arrayMain.c array.c  \\ \\ \# run with valgrind \\ valgrind ./arrayMain }
+
+Doing this yielded
+\begin{Verbatim}[frame=single]
+==5030== Memcheck, a memory error detector
+==5030== Copyright (C) 2002-2017, and GNU GPL'd, by Julian Seward et al.
+==5030== Using Valgrind-3.13.0 and LibVEX; rerun with -h for copyright info
+==5030== Command: ./arrayMain
+==5030== 
+==5030== Invalid write of size 4
+==5030==    at 0x108A37: arraySet (arrayMain.c:62)
+==5030==    by 0x108DBB: main (arrayMain.c:148)
+==5030==  Address 0x522d06c is 4 bytes after a block of size 40 alloc'd
+==5030==    at 0x4C31B25: calloc (in /usr/lib/valgrind/vgpreload_memcheck-amd64-linux.so)
+==5030==    by 0x10898D: arrayConstructor (arrayMain.c:18)
+==5030==    by 0x108D79: main (arrayMain.c:145)
+==5030== 
+==5030== 
+==5030== HEAP SUMMARY:
+==5030==     in use at exit: 40 bytes in 1 blocks
+==5030==   total heap usage: 6 allocs, 5 frees, 9,376 bytes allocated
+==5030== 
+==5030== LEAK SUMMARY:
+==5030==    definitely lost: 40 bytes in 1 blocks
+==5030==    indirectly lost: 0 bytes in 0 blocks
+==5030==      possibly lost: 0 bytes in 0 blocks
+==5030==    still reachable: 0 bytes in 0 blocks
+==5030==         suppressed: 0 bytes in 0 blocks
+==5030== Rerun with --leak-check=full to see details of leaked memory
+==5030== 
+==5030== For counts of detected and suppressed errors, rerun with: -v
+==5030== ERROR SUMMARY: 1 errors from 1 contexts (suppressed: 0 from 0)
+\end{Verbatim}
+%\end{verbatim}
+
+This run revealed two interesting things. First the ``Invalid write of size 4'' shows that the code commits an out of bounds error and the line number is provided. A moments thought reveals that without the \texttt{ARRAY\_DEBUG} compiler variable set to 1 the \texttt{arraySet} function actually does the out of bounds write that we requested to test our  out of bounds checker.
+
+Secondly, the leak summary shows that  we neglected to call the \texttt{arrayDestructor} and that 40 bytes (ten 4-byte ints) were leaked. 

@@ -1,0 +1,441 @@
+\chapterauthor{Tim Warburton}
+
+\epigraph{A C program is like a fast dance on a newly waxed dance floor by people carrying razors.}{
+Waldi Ravens, quoted by Magnus  Hetland in \emph{Practical Python}, 2002.}
+
+\minitoc
+
+There are two memory spaces that we will concern ourselves with in this course: the stack and the heap. We will first discuss the stack and then return to the heap later on in the notes.
+
+\section{The stack}
+
+The stack, sometimes called the ``Call stack'', is a section of system memory that is used to store function variables. In this \texttt{main} function we create two integer variables \texttt{a} and \texttt{b}. Each integer occupies 4 bytes, so 8 bytes at the bottom of the stack will be set aside for these variables
+\begin{minted}{c}
+/* L08/stackVariables.c */
+int main(int argc, char **argv){
+  int a;
+  int b;
+  
+  a = 1;
+  b = 2;
+  
+  return 0;
+}
+\end{minted}
+Immediately after the stack space is reserved the actual value of the two \texttt{int} variables is not specified by the C standard. We then go ahead and assign the value 1 to \texttt{a} and 2 to \texttt{b}.
+
+The stack grows as the number of function variables grows. Consider the following code where \texttt{main} calls another function as in this code
+
+\begin{minted}{c}
+/* L08/callStack.c */
+int foo(int d, int e){
+  int f = d + e;
+  return f;
+}
+int main(int argc, char **argv){
+  int a, b, c;
+    
+  a = 1;
+  b = 2;
+  c = foo(a,b);
+  
+  return 0;
+}
+\end{minted}
+
+In this case two things happen when the call too \texttt{foo} is made. First the memory address (sometimes called program counterr) of the call instruction in the \texttt{main} function is added to the stack, secondly two new variables are added to the stack. One for each argument passed into \texttt{foo} recalling that C uses a pass-by-copy mechanism to pass data into a function. In the context of the call stack this makes a lot of sense since each function gets to use part of the memory stack where its variables are stored. 
+
+When the function \texttt{foo} finishes executing its variables are removed from the stack and the program counter is set to the next instruction after the stored call site program counter which is also then removed from the stack. [ The above is a rough description of how the stack works see \href{https://en.wikipedia.org/wiki/Call_stack}{wiki} for more details. ]
+
+The bottom line is that the variables you create in a function live on the stack. 
+
+\section{Stack arrays}
+
+Frequently we will need not just a handful of variables but instead a large  number of variable values. For instance a data set with say hundreds of data points. We can reserve space on the stack for say a hundred integer variables with this notation
+
+\begin{minted}{c}
+  int v[100];
+\end{minted}
+
+This will do two things. First 400 bytes will be reserved on the stack, and secondly a variable \texttt{v} will be added to the stack. That variable is a so-called ``pointer'' variable that in this case will be a 32-bit or 64-bit variable (depending on if you installed the 32-bit or 64-bit Ubuntu OS). The pointer variable represents an unsigned integer offset in memory from the first byte of memory and thus ``points'' to the start of the array in memory.
+
+We can read or write to individual entries of the stack array with the square bracket operator as follows
+
+\begin{minted}{c}
+  /* see L08/stackArray.c */
+  int v[100];
+  
+  v[0] = 11; /* set first entry in array to 11 */
+  v[66] = 5; /* set 67th entry in array to 5 */
+   
+  int a = v[0]; /* copy first entry from array into a */ 
+\end{minted}
+
+It is important to keep in mind that a stack array only lives as long as it takes the function it resides in to finish executing. As soon as the function returns the stack array is reclaimed. 
+
+\section{Pointers}
+
+The \texttt{v} variable in the above example is an example of a pointer, i.e. it contains the memory address of the first entry of the stack array. A pointer is a curiously powerful programming device. In fact it is so powerful that entire languages have been created to avoid exposing pointers. 
+
+For instance Java gives access to memory through references, but hides pointers behind the scenes. This is part of the Java security model as it was originally envisioned as a programming language where you could write code once and run anywhere for instance as a web application. Thus to avoid the security issues of exposing pointers Java does not explicitly give programmers access directly to memory.
+
+To illustrate the power of pointers consider this example where we 
+
+\begin{minted}{c}
+ /* see L08/pointers.c */
+ int a = 10;     /* create an integer variable on the stack */
+ int *pt_a = &a; /* use reference operator to get pointer to variable */
+ pt_a[0] = 6;      /* assign value to a via dereferenced pointer */
+\end{minted}
+
+By using the reference operator (\texttt{int *pt\_a = \&a}) we are able to find the address of \texttt{a} in memory and store it in a pointer variable. We then use the \texttt{[]} operator to dereference the pointer and set the value of \texttt{a} to 6. Here we chose to treat the pointer as the pointer to the first entry in an array whiich contains the variable \texttt{a}.
+
+We could have also achieved the same goal with \texttt{*pt\_a = 6} as the \texttt{*} operator in this context is also a dereferencing operator.
+
+Put another way, we can modify a variable as long as we have a pointer to its location in memory. Consider this example
+
+\begin{minted}{c}
+/* L08/pointerFunctionArg.c */
+void changeViaPointer(int *pt_a){
+
+  pt_a[0] = 4;
+
+}
+
+int main(int argc, char **argv){
+
+   int a = 5;
+   
+   /* pass copy of pointer to a to changeViaPointer */
+   changeViaPointer(&a);
+ 
+   /* print a */
+   printf("a=%d\n", a);
+ 
+   return 0;
+}
+\end{minted}
+
+In this case the \texttt{changeViaPointer} function will change the variable \texttt{a} via dereferencing the pointer to \texttt{a}. This is an example where a pointer is able to extend the scope of a variable from one function to another function. This allows us to circumvent the limitations of local scope imposed by the C argument pass-by-copy convention. 
+
+I hope this reveals some of the power of a pointer and why it is often maligned as a dangerous instrument. To clarify some possible misuses consider this code
+
+\begin{minted}{c}
+/* L08/snoop.c */
+
+#include <stdio.h>
+void snoop(char *message){
+  /* read characters from the stack indefinitely */
+  int n = 0;
+  while(1){
+   printf("%c", message[n]);
+   n = n+1;
+  }
+}
+
+int main(int argc, char **argv){
+
+   char message1[] = "The message we are passing";
+   char message2[] = "The message we are not passing";
+   
+   /* print out values from the stack starting at the beginning of message1 */
+   snoop(message1);
+ 
+   return 0;
+}
+\end{minted}
+
+When we build and run this we get a lot of extra output until the program tries to read from a segment of memory it is not allowed to access and ceases execution with the classic \texttt|Segmentation fault (core dumped)| message. 
+
+The output from running the \texttt{snoop} code includes some interesting information
+\begin{verbatim}
+The message we are passing^@9;V^@^@The message we are not passing^@^@ ...
+./snoop^@CLUTTER_IM_MODULE=xim^@LS_COLO ...
+GNOME_SHELL_SESSION_MODE=ubuntu ...
+\end{verbatim}
+Notice how this simple snoop program has revealed information from the bash shell environment variables as well as other data from the stack.
+
+In our \texttt{snoop} code we only used a pointer to read beyond our safe space on the stack. We could have also tried to write beyond the end of the \texttt{message1} character array. 
+
+Using a pointer to read or write outside the space allocated for an array is referred to as an ``out of bounds'' error. The \texttt{message1} array only has 27 characters including the null terminator. We only should access \texttt{message[n]}  for \texttt{n in [0,27)} however as we have seen C will let us access way beyond the end of the array and the program only stops when the OS intervenes and forces the program to stop running with a seg fault when it detects a gross violation of memory access rights.
+
+You might ask why discuss this ? Wouldn't a programmer lacking malevolent intent avoid intentionally committing an out of bounds array memory access ? It turns out that the key word here is ``intentionally''. Oftentimes beginning (and even seasoned) C programmers miscalculate arrays indices. A simple mistake is to forget that C is a zero-based language. 
+
+This is ok
+\begin{minted}{c}
+int v[10];
+int i;
+/* fill up entries of array with 3 */
+for(i=0;i<10;++i){
+  v[i] = 3;
+}
+\end{minted}
+
+This is NOT ok 
+\begin{minted}{c}
+int v[10];
+int i;
+/* fill up entries of array with 3 */
+for(i=1;i<=10;++i){
+  v[i] = 3; /* this causes an out of bounds error */
+}
+\end{minted}
+because the first entry of the arrays is at \texttt{v[0]} and the last entry of this array is at \texttt{v[9]}. In the bad code we are accessing entries \texttt{v[1]} to \texttt{v[10]} and that last entry is not part of the array of 10 \texttt{int} variables. Notice that the differences between these two codes are seemingly quite innocuous.
+
+It is so easy to commit mistakes like this that we will introduce strategies to avoid doing so and also later on use the \texttt{valgrind} software to automatically detect when a code commits an out of bounds error.
+
+Finally, keep in mind that there is a limit to how much data can be stored on the stack. The stack limit in Ubuntu tends to be measured in megabytes (millions of bytes) and this can be quickly consumed if you create large stack arrays. In the following we discuss a larger section of system memory called the heap.
+
+\section{Heap arrays}
+The heap is a separate section of memory that is distinct from the stack. It is common practice to allocate an array on the heap when the array is large and/or the array will be used by multiple functions and will have a relatively long lifetime during the execution of the program. 
+
+To allocate an array on the heap we use functions in the C standard library and thus will need to \texttt{\#include <stdlib.h>}. The following code snippet goes through the process of allocating, populating, and freeing a heap array.
+
+\begin{minted}{c}
+
+/* L08/heapArray.c */
+
+#include <stdio.h>
+#include <stdlib.h>
+
+int main(int argc, char **argv){
+ 
+  /* use N to specify number of entries in array */
+  int N = 1000;
+  
+  /* allocate storage for N*sizeof(int) bytes on the heap */
+  int *v = (int*) malloc(N*sizeof(int));
+  
+  /* use a  for loop to set the N entries in the array */
+  int n;
+  for(n=0;n<N;++n){
+    v[n] = n;
+  }
+  
+  /* free the heap array */
+  free(v);
+  v = NULL; /* NULL the pointer as a precaution */ 
+}
+\end{minted}
+
+Note at the end, after freeing the heap array, we zeroed out the value of the pointer to avoid having a stale pointer (to a location in heap memory) that could be misused later in the code since the array has been returned to the OS.
+
+The key functions we used are: \texttt{malloc} to memory-allocate on the heap and \texttt{free} to release the heap memory back to the OS. These are extremely useful functions in the C standard library. 
+
+There are some caveats you should keep in mind when allocating heap arrays:
+\begin{enumerate}
+    \item If you request an array that is larger than the available space on the heap \texttt{malloc} will return a NULL pointer (zero pointer).
+    \item The \texttt{malloc} function reserves space on the heap and provides a pointer to the first entry. However, it does not take any steps to initialize the values in the array. The values in the array will be whatever values are left over from previous data stored in that part of the heap.
+    \item If you want to guarantee that the all the bits of the array are zeroed you can alternatively use the \texttt{calloc} function (short for clear-alloc). It has a slightly different interface: \texttt{int *v = (int*) calloc(N, sizeof(int));}
+    \item The \texttt{free} command is a little fragile. Avoid freeing a heap array multiple times.
+    \item If you do not free a heap array before you lose track of its pointer then the heap memory ``leaks''. If you keep doing this then you will eventually fill up the heap and subsequent memory allocations will fail.
+\end{enumerate}
+
+In the following section we discuss some strategies to avoid some of the commonest pitfalls of programming with heap pointers.
+
+\section{Defensive programming with pointers}
+\label{array.sec}
+
+By now I hope you are feeling mildly wary of using pointers given how their abuse can cause the obvious catastrophic failure of a segmentation fault or even worse a silent memory corruption during the execution of your program.
+
+We can try to avoid some of the worst issues by adopting a more defensive approach to using the heap and pointers. One commonly used strategy is to create a new variable struct type for an array. The struct will include enough information that out of bounds array accesses can be detected at runtime by the use of \texttt{get} and \texttt{set} functions that are the only functions that are allowed to access entries in an array.
+
+The following code implements a very barebones array struct 
+
+\begin{minted}{c}
+typedef struct {
+
+  int Ndata; /* number of data entries*/
+
+  int *data; /* pointer to heap data array */
+} array_t;
+\end{minted}
+
+and this code implements a simple (but not fool proof) constructor to initialize an \texttt{array\_t} instance
+
+\begin{minted}{c}
+array_t arrayConstructor(int Ndata){
+
+  array_t a;
+  a.Ndata = Ndata;
+  a.data  = (int*) calloc(Ndata, sizeof(int));
+
+  if(a.data == NULL) {
+    fprintf(stderr, "WARNING: arrayConstructor calloc failed\n");
+  }
+
+  return a;
+}
+\end{minted}
+
+{\bf Note}: that the \texttt{arrayConstructor} checks to see if \texttt{calloc} returned a NULL pointer, i.e. it checks to see if a heap array was actually allocated. If a heap array was not created then the code prints an error message to the standard error stream that is customarily used to print out error messages. In this code we chose not to cease execution of the program if the heap allocation failed, but since this is such a serious failure it may be prudent to do so.
+
+It is now natural to provide \texttt{get} and \texttt{set} functions that read and write entries to the array respectively.  In the next code we give simple implementations that check whether writing to entry \texttt{n} is permissible taking into account the number of entries in the array and that the \texttt{get} and \texttt{set} functions assumed zero indexing.
+
+\begin{minted}{c}
+int arrayGet(array_t a, int n){
+
+  if(n<0 || n>=a.Ndata){
+    fprintf(stderr, "WARNING: arrayGet size %d array bounds error with index %d\n",
+            a.Ndata, n);
+    return 0;
+  }
+
+  if(a.data == NULL){
+    fprintf(stderr, "WARNING: arrayGet request to access NULL array\n");
+    return 0;
+  }
+  return a.data[n];
+}
+
+void arraySet(array_t a, int n, int val){
+
+  if(n<0 || n>=a.Ndata){
+    fprintf(stderr, "WARNING: arrayPut size %d array bounds error with index %d\n",
+           a.Ndata, n);
+    return;
+  }
+
+  if(a.data == NULL){
+    fprintf(stderr, "WARNING: arrayPut request to access NULL array\n");
+    return;
+  }
+
+  a.data[n] = val;
+}
+\end{minted}
+
+Thus if all \texttt{array\_t} instances are initialized using the \texttt{arrayConstructor} and entries are only accessed through \texttt{arrayGet} and \texttt{arraySet} then we can be relatively confident that the array will be a lessor source of errors than using a naked pointer. 
+
+However, keep in mind that other parts of your code that use naked pointers could still potentially be responsible for memory access errors that impact the member variables of your \texttt{array\_t} struct and also the contents of the data array you have wrapped with the \texttt{array\_t} struct.
+
+The final minimal barebones \texttt{array\_t} needs a destructor function that frees the heap array and sets the number of entries to zero. As usual we add some error checking to make sure that we don't try to free a NULL pointer.
+
+\begin{minted}{c}
+array_t arrayDestructor(array_t a){
+
+  if(a.data == NULL){
+    fprintf(stderr, "WARNING: arrayDestructor trying to destruct NULL array\n");
+  }
+  else{
+    free(a.data);
+  }
+
+  // zero length of array            
+  a.Ndata = 0;
+
+  return a;
+}
+\end{minted}
+
+We combine these function calls in the following example code to create an array, set a legitimate entry, try to set an illegitimate entry, get an entry, and finally destruct the array.
+
+\begin{minted}{c}
+int main(int argc, char **argv){
+
+  int Na = 10;
+
+  /* build array */
+  array_t a = arrayConstructor(Na);
+
+  arraySet(a, 3,  1); /* a[3] = 1 */
+  arraySet(a, 11, 2); /* a[11] = 2 will get WARNING*/
+
+  int a3 = arrayGet(a, 3); /* set a3 = a[3] */
+
+  /* destroy array */
+  a = arrayDestructor(a);
+
+  return 0;
+}
+\end{minted}
+
+This more defensive style of programming hopefully has some apparently positive side benefits. 
+
+\begin{enumerate}
+    \item The code in \texttt{main} may be clearer in purpose.
+    \item The error checking is hidden from the top level of code and does not cloud  purpose.
+    \item There is actual error handling !
+    \item We can potentially change the internal representation of the \texttt{array\_t} without changing the high level code that uses it.
+\end{enumerate}
+However also keep in mind some issues that may be caused by using this type of defensive programming style.
+\begin{enumerate}
+    \item A code usually consists of nested structs (structs that contain struct member variables that contain struct members...). 
+    \item Every level of indirection may take compute cycles and may reduce the performance of your code. For instance consider a task that requires a trillion ($10^{12}$) array get ops (not an outlandish number). Each array get op function call incurs the stack build up cost for a function call together with the conditional checks for valid array index and valid array pointer. For a CPU that executes instructions at a frequency of 1GHz, i.e. one billion operations per second then each operation takes 1ns. Thus  you will have introduced an overhead a thousand seconds to process a trillion get ops.
+    \item A programmer who decides to uses your \texttt{array\_t} based code may end up writing pretzel code that has to do a lot of extra operations like create new arrays and copying their data to get the benefit of your code base. This can deter programmers from using your code due to extra effort or possibly producing an inefficient code if they do it in a na\"{i}ve way.
+\end{enumerate}
+There are some steps you can take to improve the efficiency of the error handling code. One common approach is to use compiler directives to let you disable error checking at compile time. We can illustrate this via the \texttt{arrayGet} function as in the following
+
+\begin{minted}{c}
+int arrayGet(array_t a, int n){
+
+#if ARRAY_DEBUG==1
+  if(n<0 || n>=a.Ndata){
+    fprintf(stderr, "WARNING: arrayGet size %d array bounds error with index %d\n",
+            a.Ndata, n);
+    return 0;
+  }
+
+  if(a.data == NULL){
+    fprintf(stderr, "WARNING: arrayGet request to access NULL array\n");
+    return 0;
+  }
+#endif
+
+  return a.data[n];
+}
+\end{minted}
+It uses the following preprocessor syntax that is not actually part of the C language
+
+\begin{minted}{c}
+#if ARRAY_DEBUG==1
+ ...
+#endif
+\end{minted}
+The code bracketed by the \texttt{\#if/\#endif} is only compiled if the \texttt{ARRAY\_DEBUG} compiler variable is defined and has value 1 when the code is compiled.
+
+To activate that code we would compile the code with the following additional compiler command line argument.
+
+\myvbox[mytermbg]{gcc -DARRAY\_DEBUG=1 -o arrayStruct arrayStruct.c}
+
+where the \texttt{-DARRAY\_DEBUG=1} defines a compiler variable called \texttt{ARRAY\_DEBUG} and sets its value to 1. With this extra option the code will now do the error checking.
+
+Without the option say compiling with 
+
+\myvbox[mytermbg]{gcc -o arrayStruct arrayStruct.c}
+
+the compiler will omit that error handling code. 
+
+It is quite common practice to use directives in this way to help debug a code and then disable them for production, with the understanding that once you take these figurative training wheels off your code might still fail with some as of yet undiagnosed issue.  This approach can be refined further by using the value of the \texttt{ARRAY\_DEBUG} compiler variable to decide the amount of error checking to do. For instance 0=none, 1=array bounds checking, 2=array bounds+array allocation...
+
+\section{Struct of arrays}
+
+In the previous section we saw how to build a relatively robust \texttt{array\_t} struct. In practice and in your k-means code you will not have just one array but several arrays. To help manage multiple arrays you can design a \texttt{struct} to contain them. 
+
+Suppose you have two arrays \texttt{x} and \texttt{y} then you can design a container \texttt{struct} with 
+
+\begin{minted}{c}
+typedef struct{
+  array_t x;
+  array_t y;
+}container_t;
+\end{minted}
+
+and follow the same pattern as in the definition of the \texttt{array\_t} struct type and associated API functions by providing a constructor, destructor, get/set, print implementations. 
+
+\section{Summary of C standard library heap management functions}
+
+Table \ref{stdMemoryFunctions.tab} summarizes useful standard library function calls for interacting with the heap.
+
+\begin{table}[htbp!]
+    \centering
+    \begin{tabular}{l|l} \hline
+      Action & Action implemented using standard library heap functions\\ \hline
+        Allocate heap array &  \texttt{[TYPE]* ptr = ([TYPE]*) malloc([N]*sizeof(TYPE));} \\
+         Allocate heap array and zero entries &  \texttt{[TYPE]* ptr = ([TYPE]*) calloc([N],sizeof(TYPE));} \\
+         Release heap array to system & \texttt{free(ptr);}\\
+         Change size of heap array & \texttt{ptr = [TYPE]* realloc(ptr, [NEW N]*sizeof(TYPE);}\\
+    \hline\end{tabular}
+    \caption{Summary of commonly used standard library heap functions. Here \texttt{[N]} is the number of entries of type \texttt{[TYPE]} in the arrays.}    
+    \label{stdMemoryFunctions.tab}
+\end{table}

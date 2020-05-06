@@ -1,0 +1,144 @@
+\chapterauthor{Tim Warburton}
+
+\epigraph{I currently use Ubuntu Linux, on a standalone laptop - it has no Internet connection. I occasionally carry flash memory drives between this machine and the Macs that I use for network surfing and graphics; but I trust my family jewels only to Linux.}{Donald Knuth}
+
+\minitoc
+
+\section{Linux}
+
+Yesterday (08/25/19) marked a milestone. 28 years have passed since a Ph.D. student by the name of Linus Torvalds created the semi-eponymous Linux Operating System as part of his dissertation work. 
+More details on \href{https://en.wikipedia.org/wiki/History_of_Linux}{wiki} and this Wired.com
+\href{https://www.wired.com/2009/08/0825-torvalds-starts-linux/}{article}. We will be hearing more about Torvalds later in the course.
+
+Torvalds did not invent most of the OS concepts in the original Linux kernel, they predated his work being available in the Unix OS and variants. His key contribution was  releasing Linux with a free license whereas Unix and clones required expensive licenses. Since then the Linux OS has been adopted by millions of users.
+
+The Linux kernel is the core of the OS. There are a large number of distributions that package the Linux kernel with other software to form so-called ``Linux distributions''. In this class we will use the Ubuntu distribution as it is relatively friendly and feature-adequate for our purposes.
+
+\section{Building a Linux VirtualBox}
+To make sure everyone is using the same software for this class everyone is expected to create a virtual machine that runs a second operating system (OS) on top of the regular Windows or OSX operating system that normally runs your laptop. We will be able to offer some limited support to students who follow the instructions given below. We cannot offer support to students who choose to deviate from this setup.
+
+You should go ahead and install the VirtualBox software and create a Linux virtual machine that runs the 18.04LTS version of Ubuntu. VirtualBox will allow you to run a guest OS on top of your regular host OS. So even if your laptop runs Windows or OSX it will be able to behave 
+
+
+A step by step guide is given below however note that some options and windows may vary based on your laptop OS:
+
+\begin{enumerate}[start=1,label={\bfseries Step \#\arabic*:}]
+    \item Download VirtualBox from \href{https://www.virtualbox.org}{https://www.virtualbox.org}.
+    \item Install VirtualBox.
+    \item Download an image of the Ubuntu distribtion of Linux \href{https://ubuntu.com}{https://ubuntu.com}. Note: the Ubuntu iso file may be 2GB (2 billion bytes) in size and may take a long time to download. We recommend that you do this before class.
+    \item Start the VirtualBox software and a VirtualBox Manager should appear:
+    
+    \itemimage{figures/L01/vboxManager.png}
+   
+    \item In this example you can see that I already created some virtualboxes shown in the left pane.
+    \item To create a new VirtualBox instance clock on the ``New'' button.
+    \item You should see a dialog drop down where you can select the type of operating system. Choose Linux and Ubuntu 64-bit. If you do not get an option to choose 64-bit but only 32-bit then choose that. That 32-bit only option suggests that your laptop is an older model with a 32-bit processor. 
+    
+    \itemimage{figures/L01/vboxNewSelectOS.png}
+ 
+    \item Note that at this point you have not actually installed the OS but merely notified VirtualBox of which operating system you intend to install.
+    \item After you press ``Continue'' you will get an opportunity to specify the memory size for your VirtualBox. This is somewhat like deciding how much RAM you wanted when you bought your laptop. But this time you are specifying how much of your laptop RAM should be dedicated (in a sense) to the VirtualBox that it is hosting. 
+     
+    \itemimage{figures/L01/vboxSelectMemory.png}
+    
+    Aim to select about half way into the green, i.e. about a half of the physical memory in your laptop remaining after the space occupied by the native OS. If you can reserve say 4GB (4 billion bytes) that is marginal but likely ok. Less than 2GB will be problematic. Overall, 8GB would be a sweet spot if your laptop has 16GB or 32GB.
+    \item The next step is to specify the virtual hard drive that should be provisioned to the VirtualBox. After pressing Continue on the memory pane you should see something like
+    
+    \itemimage{figures/L01/vboxHD1.png}
+   
+    You should specify creating a ``Virtual hard disk now'' and then you will be asked what type of virtual hard disk should be created
+   
+    \itemimage{figures/L01/vboxHD2.png}
+    
+    I recommend sticking with the default type. After pressing Continue you will be asked if you want to create a fixed size file that will contain the virtual hard drive, or whether it should be dynamically allocated. If you choose the fixed size file then VirtualBox will create a large file. If you choose dynamically allocated then the file will grow as you increase the number of files inside the VirtualBox instance. 
+    
+    \sout{I recommend ``dynamically allocated'' for this course.} Based on feedback from Dr. Hewett who taught this course in the spring semester using a dynamically sized hard drive may have caused problems. He recommend using the fixed size option. It might take a little while for VirtualBox to finish building the disk file, so be patient ! You may also consider turning off auto-backup on the .vdi file if you have auto-backup set up.
+    
+    After pressing Continue you will be asked how big you want the virtual hard drive to be. If you comfortably have 32GB of free space on your actual physical laptop hard drive then choose 32GB. Otherwise you might have to choose a smaller size. You can find the available disk space using Finder on OSX and File Explorer on Windows.
+
+    \itemimage{figures/L01/vboxHD3.png}
+    
+    Go ahead and click on Create to finalize the set up of the virtual hard drive.
+    \newpage
+    \item At this point you have specified the type of OS you plan to install, the size of memory, and the size of hard drive for your new VirtualBox instance. If everything went smoothly you should see a summary of your new VirtualBox as below
+    
+     \itemimage{figures/L01/vboxSummary.png}
+    
+    Notice how the System settings show the memory (8GB), the Storage settings show the hard drive (32GB), the General settings show type of OS (Ubuntu 64-bit). Double check that everything got specified the way you expected.
+    
+    \item Now that you have built your virtual Linux machine hardware - check on the status of your Ubuntu iso download from step 3. If it has finished then you are ready for the next step: virtually inserting the Ubuntu disk into your VirtualBox [ harks back to the old days when files came on physical media like floppy disks, CD-roms, DVD-roms ... ]
+    
+    When the iso file is downloaded click on the Settings button, then click on the Storage button in the window that appears
+    
+    \itemimage{figures/L01/vboxInsertDisk.png}
+   
+    There is tiny button shaped like a DVD disk with a plus sign. Click on that and select ``Choose Disk''. 
+    
+    \itemimage{figures/L01/vboxChoooseDisk.png}
+  
+    Navigate to the .iso file you downloaded in step 3 then click ``Choose''. Once you have inserted the disk you will see something like
+    
+   \itemimage{figures/L01/vboxInsertedDisk.png}
+    
+    Click OK and now you are hopefully ready to start your brand new VirtualBox. Just to double check you should see your .iso file in the updated Storage settings for your VirtualBox
+    
+    \itemimage{figures/L01/vboxFinalSummary.png}
+    
+    Note the ``IDE Primary Master'' is now occupied by the ubuntu iso.
+    
+    \item Brace yourself, now you can start your VirtualBox by pressing the green Start arrow
+    
+    For some weird reason to do with display resolution when the VirtualBox starts on my MacBook Pro the window is really small. You should see something like this after a couple of minutes
+    
+    \itemimage{figures/L01/ubuntuChoose.png}
+    
+    \item Although we have inserted the OS disk, the software from the disk has to be copied to the virtual hard drive. 
+    {\bf I cannot stress this enough}: do not click the ``Try Ubuntu'' button. It will start Ubuntu in a way that does not install it on your VirtualBox. 
+    
+    \begin{center}\underline{\bf Click on the ``Install Ubuntu'' button}. 
+    \end{center}
+    
+    \newpage
+    \item After clicking ``Install Ubuntu'' you will be asked to choose your preferred keyboard layout (recommend: US), type of installation (click: Normal Installation), and installation type. That last one sounds pretty scary: the first option asks if you want to ``Erase Disk and Install Ubuntu''. 
+    
+    \itemimage{figures/L01/ubuntuInstallType.png}
+    
+    If the installation is actually happening inside a VirtualBox it is asking if you want to erase your virtual hard drive. That is not so scary, since it is just a file on your physical laptop hard drive. So if you are doing this inside VirtualBox then go ahead and choose that option then click ``Install Now'' and confirm that you want to change the disk.
+    
+    \item After choosing your time zone you will be asked for some default user information
+    
+     \itemimage{figures/L01/ubuntuInstallType.png}
+    
+    You can be creative in what name you choose to provide, choosing a username, however you should try to select a password that is not trivial but that you can remember.
+    
+    \item After entering your user info the installer will start copying files into the Ubuntu file system. Depending on how fast your laptop CPU and hard drive are as well as how long it takes to download updates this might take a while. If everything went ok you should see
+    
+     \itemimage{figures/L01/ubuntuInstallationComplete.png}
+     
+    Click ``Restart Now''. 
+    
+    \item When the VirtualBox has restarted you will see a login screen that lists all the users, go ahead and double click on your username and enter your password when prompted.
+    
+   \itemimage{figures/L01/ubuntuLogin.png}
+    
+    \item After a couple of configuration questions you will eventually get to the default Ubuntu desktop
+    
+    \itemimage{figures/L01/ubuntuDesktop.png}
+    
+    Congratulations ! The first step is complete. You could start using the \VB right now, but it might not perform very well because the Ubuntu OS is unaware that it is operating within a virtual machine. Think Keanu Reaves being oblivious about living in the Matrix, or for that matter Keanu Reaves in any movie.
+    
+    \item The next step is to set up the VirtualBox so that we can adjust the overall window size. Go ahead and choose the ``Devices'' menu entry at the top of the screen and select ``Insert Guest Additions CD Image''. This is going to install some tweaks to the Ubuntu OS that optimize it for running inside a VirtualBox. When prompted click the ``Run'' button and when the terminal finishes press return and then restart the VirtualBox by clicking on the button at the top right of the Ubuntu window.
+    
+    \item After rebooting you will find that the Guest Additions has made it possible to resize the window by dragging the bottom right corner of the window.
+    
+     \itemimage{figures/L01/ubuntuBiggerDesktop.png}
+    
+    \item Finally I recommend adjusting the screen resolution by clicking on the square array of dots at the bottom left and clicking on Settings. 
+    
+    \item To adjust the screen resolution click on Devices and trying different resolution settings. You can also experiment with the View/Scaled Mode VirtualBox option. Since you will be spending considerable time interacting with the VirtualBox you should spend some time making sure the visual aspects are acceptable to you.
+\end{enumerate}
+
+\section{HW01: finishing the installation}
+
+You are required to upload a screenshot of your running Ubuntu VirtualBox, with your own desktop image and other theme customizations. 
+

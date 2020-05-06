@@ -1,0 +1,135 @@
+\subsection*{Assignment overview}
+\noindent You have two tasks in this assignment.
+
+    \vspace{8pt}\noindent {\bf Task \#1}: You will write a small Python program to read a file containing clustered point data and plot it.
+
+\vspace{4pt}\noindent {\bf Task \#2}: You will review your k-means code from the previous assignment and explain what changes must be made in order to ``parallelize'' it.
+
+\vspace{8pt}\hrule 
+
+\subsection*{Task \#1: Visualizing cluster data with Python}
+
+\subsubsection*{Data file format}
+
+The data file you will receive will have the same format as the output that you produced in homework 7.
+\begin{itemize}
+    \item \underline{Line 1}: A text header that should be read but ignored by your program.
+    \item \underline{All other lines}: The data, where each line consists of three numbers separated by one space.
+    The first two numbers of each line are geometric coordinates, and the third number is a cluster label.
+    For example, the file may look like this:
+    \begin{verbatim}
+x              y        Cluster
+-0.31611816 1.318305910 0
+-0.13527147 -1.18088550 2
+1.934038780 -0.66946771 3
+1.866830940 -0.49043796 1
+0.365777070 1.067407250 3
+0.234074240 -0.49654951 1
+-0.71434134 0.548718770 0
+0.597211690 -0.04877915 1
+0.672386510 -1.23401157 0
+0.303697160 -0.37714570 2
+    \end{verbatim}
+\end{itemize}
+
+\subsubsection*{Command line arguments in Python}
+
+To see the parameters passed to your program from the command line,
+you need to import the parameters from \texttt{sys} like this:
+\begin{tsession}{mycodebg}
+\begin{verbatim}
+from sys import argv\end{verbatim}
+\end{tsession}
+This makes a list of strings called \texttt{argv}.
+\texttt{argv[0]} will be the name of the file being executed (for you, this will be \texttt{"plotClusters.py"}).
+For this assignment, \texttt{argv[1]} will be the name of the file you are to read.
+
+\subsubsection*{Implementation}
+
+\begin{tcolorbox}[width=\textwidth,colback=green]
+To helps us find and test your code, your main Python file should be \texttt{HW08/plotClusters.py} (a file named \texttt{plotClusters.py} in a directory named \texttt{HW08}).
+\end{tcolorbox}
+You should write a Python 3 script that does the following:
+\begin{enumerate}
+    \item[Q1:] (5pts) Read a filename as input from the command line.
+    For example the command
+    \begin{tsession}{mytermbg}
+    \begin{verbatim}
+python3 plotClusters.py clusterdata.txt\end{verbatim}
+    \end{tsession}
+    \noindent should use a file named \texttt{clusterdata.txt} in the next step.
+    \item[Q2:] (5pts) Read the data from the file.
+    You may assume that the data is formatted as described earlier.
+    \item[Q3:] (5pts) Store the data with NumPy array(s).
+    You may want to store the data in Python list(s) at first and then convert them to array(s).
+    \item[Q4:] (10pts) Plot the points of data as (x,y) pairs.
+    Points should be plotted in the same color when they have the same cluster number.
+    
+    \underline{You may have a large number of clusters}.
+    There are only eight colors that have names in pyplot (like \texttt{'b'} for blue).
+    In order to give a different color to each cluster,
+    you will need to generate custom colors in RGB format.
+    For example, if you want to use a random color for each cluster,
+    you could make a random array with the command
+    \begin{tsession}{mycodebg}
+    \begin{verbatim}
+my_colors = np.random.rand(num_clusters,3)\end{verbatim}
+    \end{tsession}
+    This makes a \texttt{num\_colors}-by-3 array with random entries from 0 to 1.
+   Each row of the array may be used as the \texttt{color} parameter of the \texttt{pyplot.plot} function.
+\end{enumerate}
+
+\subsubsection*{Testing}
+
+Instructors will use Git to push \texttt{HW08/clusterdata.txt} to your repository on \href{http://code.vt.edu}{code.vt.edu}.
+This file will have the format described earlier.
+You will need to use \texttt{git pull} to bring the file in your local repository.
+
+\begin{itemize}
+    \item[Q5:] (5pts) Run your program to process the provided data file and save the plot as \texttt{HW08/cluster.pdf}
+\end{itemize}
+
+\vspace{8pt}\hrule
+
+\newpage
+
+\subsection*{Task \#2: Parallelizing k-means using OpenMP}
+
+In a later assignment, you will be asked to modify your k-means code to make it run with multi-threading using OpenMP.
+You do NOT need to modify your C code for this assignment.
+\begin{tcolorbox}[width=\textwidth,colback=green]
+If your code from Homework 7 did not work, you may use the instructor's code that is posted on Canvas \href{https://canvas.vt.edu/courses/95914/files/folder/Homework/HW07\%20example}{here}.
+Read and understand this code and determine what changes will need to take place in order to parallelize it.
+\end{tcolorbox}
+
+\begin{itemize}
+    \item[Q7:] (15pts) Analyze your k-means code and  explain how you plan to make it parallel using OpenMP. Refer to the checklist of properties that the code must satisfy to be eligible for OpenMP parallelism.
+    
+    Make a list of the changes that you will need to make in the sections of your code that:
+    \begin{enumerate}
+        \item [i.] Computes the centroids of the clusters.
+        \item[ii.] Assigns the data points to the clusters.
+    \end{enumerate}
+    You should include the relevant pieces of code in your report (not the whole listing). Use full sentences to explain what you will need to do.
+    
+    You should explain in particular which loops may be made parallel using the OpenMP \texttt{\#pragma omp parallel for} directive. Note any sections of the body of these for loops that require special handling to avoid race conditions.
+\end{itemize}
+\vspace{8pt} \hrule
+\newpage
+\subsection*{Submission}
+
+\begin{itemize}
+    \item[Q8:] (5pts) Include the following in your \LaTeX{} typeset report:
+\begin{itemize}
+    \item Your Python code formatted using the \texttt{minted} environment.
+    \item The plot that your code produced.
+    \item An analysis of the parts of your k-means code that need to be adapted to make the code parallel using OpenMP.
+\end{itemize}
+\end{itemize}
+Submit your assignment as follows:
+\begin{itemize}
+    \item Upload your PDF and tex files to Canvas.
+    \item Submit the Python source file by pushing it to your git repository on \href{http://code.vt.edu}{code.vt.edu}.
+    You may not receive any credit if your code is not in your repository.
+\end{itemize}
+

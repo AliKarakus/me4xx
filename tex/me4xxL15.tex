@@ -1,0 +1,502 @@
+\chapterauthor{Tim Warburton}
+
+\minitoc
+
+%% OpenMP part II
+%% sections
+%% synchronization: critical 
+%% reductions
+%% scaling study
+
+In this section we delve deeper into using OpenMP to make a code multi-threaded. We first discuss using the OpenMP \texttt{sections} region to perform task based parallelism. We then discuss OpenMP directives that allow us to control synchronization of operations within a parallel region. We next introduce parallel region directive clauses that allow us to perform data reduction operations. Finally we illustrate how to conduct a performance analysis of an OpenMP to determine how well it ``scales'' by which we mean measure how much speed up you get from using 2,3,4, or more threads compared to running with just one thread.
+
+\section{OpenMP: sections}
+
+In the last lecture we focused on annotating parallel regions with OpenMP (\texttt{omp}) directives. We queried the OpenMP API to determine the thread number inside the parallel region and used that to cause thread divergence with different threads executing different code. There is a formal approach in OpenMP for doing this called ``sections''. The idea is that within a parallel region we can open a sections region and then inside the sections region we can designate that different chunks of code can be processed by separate threads. If there are more section mini-regions than threads then one or more threads will process more than one section region.
+
+In pseudo-code we can use OpenMP sections in the following way
+
+\begin{minted}{c}
+// open parallel region
+#pragma omp parallel 
+{
+
+// open sections region
+#pragma omp sections
+ {
+
+#pragma omp section
+  {
+    // one thread processes this 
+    ...;
+  }
+
+#pragma omp section 
+  {
+     // one thread processes this
+     ...;
+  }
+
+ } // end of sections region
+} // end of parallel region
+\end{minted}
+
+With this use of sections we can specify that in a multi-threaded environment that different parts of the code will be handled by different threads in parallel. A nice benefit of using sections is that we do not have to worry about assigning the different section blocks of code to different threads as OpenMP will take care of that for us. On the other hand it is likely that the work in each section block is not well balanced in the sense that some section may take considerably more time to process than other sections. In this case some threads will likely be idled and the code reduces in parts to running in serial even though the code might appear to be running multiple threads.
+
+\section{OpenMP: parallel summation}
+
+In this section we consider the knotty issue of extracting parallelism from a seemingly serial task. Consider the task of summing up the entries in an array, expressed here mathematically
+\[
+s = \sum_{i=0}^{i=N-1} a_i.
+\]
+A simple serial C code implementation is
+\begin{minted}{c}
+float sumSerial(int N, float *a){
+  float s = 0;
+  for(int n=0;n<N;++n){
+    s = s+a[n];
+  }
+  return s;
+}
+\end{minted}
+It may not be immediately obvious how you would distribute this among \texttt{P} threads. The result at every iteration depends on the results of summation in all prior iterations.  
+
+It is tempting to use an OpenMP parallel region where we rely on a shared variable for the accumulator \texttt{s} as follows.
+
+\begin{minted}{c}
+/* all threads update shared variable */
+float sumParallelForShared(int N, float *a){
+  /* BAD CODE - causes race condition */
+  float s = 0;
+
+#pragma omp parallel for shared(s)
+  for(int n=0;n<N;++n){
+    s = s+a[n];
+  }
+
+  printf("sumParallelFor computes sum %f\n", s);
+
+  return s;
+}
+\end{minted}
+
+Unfortunately the threads that OpenMP creates to parallelize the \texttt{for} loop will incur read/write race conditions. In this instance a thread may increment $s$ at the same time as another thread does so and only one of their increments will survive write back. The end result is an incorrect sum where elements from the sum are neglected.
+
+\subsection{OpenMP: synchronization with critical regions}
+
+To avoid the issue of operation preemption by threads competing to increment a shared accumulator we can add a so-called ``critical'' region. A critical region inside a parallel region guarantees that multiple threads will not collide and preempt each other during the read/increment operation and is expressed as follows.
+
+\begin{minted}{c}
+float sumParallelForCritical(int N, float *a){
+  /* CORRECT CODE - slowed by critical condition */
+  float s = 0;
+
+#pragma omp parallel for shared(s)
+  for(int n=0;n<N;++n){
+#pragma omp critical
+    {
+      s = s+a[n];
+    }
+  }
+
+  printf("sumParallelForCritical computes sum %f\n", s);
+
+  return s;
+}
+\end{minted}
+
+{\bf Note}: the code within the critical region is likely serialized as the threads take turns to increment the accumulator.
+
+The above code will be slow. In order to guarantee that a thread will not be preempted while incrementing the accumulator each thread must obtain a lock for its accumulator operations for which the details are not important except that it is time consuming.
+
+\subsection{OpenMP: atomic operations}
+
+In the last section we used a critical region to protect (and serialize) increments to a shared accumulator. The critical region is quite general and a relatively expensive operation so is usually reserved for infrequent instances when a threads needs to guarantee it can access several shared variables.
+
+There is a less general approach using so-called ``atomic''  operations for some special case arithmetic operations. Instead of requiring an expensive software lock in a critical region an atomic operation may be performed by specialized hardware units. For the specialized \texttt{+=} increment we can use an \texttt{atomic} region as follows. 
+
+\begin{minted}{c}
+float sumParallelForAtomic(int N, float *a){
+  /* GOOD CODE - slowed by atomics */
+  float s = 0;
+
+#pragma omp parallel for shared(s)
+  for(int n=0;n<N;++n){
+#pragma omp atomic
+    s = s+a[n];
+  }
+
+  printf("sumParallelForAtomic computes sum %f\n", s);
+
+  return s;
+}
+\end{minted}
+
+\subsection{OpenMP: reduction operations}
+
+In general using \texttt{critical} or \texttt{atomic} regions is not advisable if avoidable. In either case the increments in our summation are serialized (either in software via locks for \texttt{critical} or in hardware for \texttt{atomic}). To improve the parallelism of the summation it makes more sense for each thread to maintain its own accumulator for the iterations it performs and then when all threads are done to sum up the accumulators from all the threads. We could write OpenMP code using a \texttt{parallel for} followed by a serial \texttt{for} loop. However, this is such a commonly used code pattern that there is a clause we can add to a \texttt{parallel region} to force the compiler to do this. This is achieve in the following.
+
+\begin{minted}{c}
+float sumParallelForReduction(int N, float *a){
+  /* GOOD CODE */
+  float s = 0;
+
+#pragma omp parallel for reduction(+:s)
+  for(int n=0;n<N;++n){
+    s = s+a[n];
+  }
+
+  printf("sumParallelForReduction computes sum %f\n", s);
+
+  return s;
+}
+\end{minted}
+
+{\bf Note \#1}: the use of the \texttt{reduction} clause in the \texttt{parallel for} directive.
+
+{\bf Note \#2}: the argument of the \texttt{reduction} indicates that we want the local copy of the accumlator variable \texttt{s} from each thread to be summed up (the ``+'').
+
+\subsection{Comparing serial, critical, atomic, and reduction based summation}
+
+We collected all the above implementations into \texttt{L15/ompSum.c}. The \texttt{main} function calls each function in term and uses the OpenMP \texttt{omp\_get\_wtime} API function to accurately determine the time that each function takes.
+
+\begin{minted}{c}
+   /* L15/ompSum.c */
+   t0 = omp_get_wtime();
+
+  // sum using parallel for and shared accumulator                                 
+  sumParallelForShared(N, a);
+
+  t1 = omp_get_wtime();
+
+  // sum using critical region                                                     
+  s = sumParallelForCritical(N, a);
+
+  t2 = omp_get_wtime();
+
+  // sum using atomic operation                                                    
+  s = sumParallelForAtomic(N, a);
+
+  t3 = omp_get_wtime();
+
+  // sum using reduction clause                                                   
+  s = sumParallelForReduction(N, a);
+
+  t4 = omp_get_wtime();
+
+  // sum in serial                                                               
+  s = sumSerial(N, a);
+
+  t5 = omp_get_wtime();
+\end{minted}
+
+Printing the elapsed time is trivially achieved with the following
+
+\begin{minted}{c}
+  printf("parallel for shared    took: %f\n", t1-t0);
+  printf("parallel for critical  took: %f\n", t2-t1);
+  printf("parallel for atomic    took: %f\n", t3-t2);
+  printf("parallel for reduction took: %f\n", t4-t3);
+  printf("serial   for           took: %f\n", t5-t4);
+\end{minted}
+
+When compiled and run on a workstation
+
+\begin{Verbatim}
+gcc -O3 -fopenmp -o ompSum ompSum.c -lm
+./ompSum 10000000
+sumParallelForShared    computes sum 416667.000000
+sumParallelForCritical  computes sum 10000000.000000
+sumParallelForAtomic    computes sum 10000000.000000
+sumParallelForReduction computes sum 10000000.000000
+sumParallelSerial       computes sum 10000000.000000
+parallel for shared    took: 0.025803
+parallel for critical  took: 3.882568
+parallel for atomic    took: 0.915652
+parallel for reduction took: 0.003116
+serial   for           took: 0.011130
+\end{Verbatim}
+
+{\bf Note \#1}: When adding 10 million ones only the na\"{i}ve version using the unguarded shared accumulator obtained the wrong answer, as we expected (and it was spectacularly wrong!). 
+
+{\bf Note \#2}: The version using the OpenMP \texttt{reduction} clause was by far the fastest. Maybe surprisingly the serial code was the next fastest. 
+
+{\bf Note \#3}: These timings should be taken seriously: in OpenMP we should avoid serialization through atomics or critical regions as much as possible because of the large amount of overhead in using those constructions.
+
+{\bf Note \#4}: Using the atomic region in this instance is not nearly as bad as the critical region, but still pretty bad !
+
+{\bf Note \#5}: When compiling I used the \texttt{-O3} (that's a capitalized letter O) compiler command argument so that the compiler would apply code optimizations to the code. 
+
+\section{OpenMP checklist: to pragma or not to pragma ?}
+
+Let's be pragmatic\footnote{Sorry.} about this, it can be difficult to decide for any given piece of code if it is a good candidate for multi-threaded parallelism using OpenMP compiler directives. In this section we provide a checklist of details to verify when deciding how and if a for loop can be made parallel with OpenMP.
+
+{\bf Check \#1}: will changing the order of execution of the iterations in the for loop change the computed result ? 
+
+If iteration order matters then this is a red flag, proceed with caution. The following code illustrates an example of a good candidate and a bad candidate for the OpenMP parallel loop construct.
+
+\begin{minted}{c}
+// Good candidate for parallel loop
+for(int n=0;n<N;++n) 
+  v[n] = n;
+
+// Bad candidate for parallel loop 
+// - the values written to the v array change if you change the order of iteration
+v[0] = 0;
+for(int n=1;n<N;++n) 
+  v[n] = v[n-1] + 1;
+\end{minted}
+
+The bad candidate will give different results every time the code runs. This lack of predictability is a hallmark of a troublesome piece of code as far as OpenMP threaded parallelism is concerned.
+
+{\bf Check \#2}: is there an accumulating stack variable ? 
+
+If a stack variable is updated in more than one iteration then proceed with caution.  
+
+If a stack variable is shared by multiple threads and it is updated in more than one iteration then it is possible (and likely) that if the iterations are partitioned between threads that there will be a race condition to write to the stack variable.
+
+Consider the following code
+\begin{minted}{c}
+// Loop that includes an accumulating stack variable
+double s = 0;
+for(int n=0;n<N;++n) 
+  s = s + 1;
+\end{minted}
+As demonstrated in class adding a naive \texttt{omp parallel for} directive to the \texttt{for} loop gave inconsistent results. One thread would read a value, increment it, write it to \texttt{s} but that value would then be overwritten by a different thread using a newer or older value incremented \texttt{s}.
+
+A possible resolution is to use the OpenMP reduction clause when forming the parallel loop directive as follows.
+\begin{minted}{c}
+// Loop that includes an accumulating stack variable
+double s = 0;
+
+#pragma omp parallel for reduction(+:s)
+  for(int n=0;n<N;++n) 
+    s = s + 1;
+\end{minted}
+When an OpenMP enabled compiler generates source code for this loop it will create a private stack variable called \texttt{s} for each thread and then sum up the \texttt{s} values from all the threads at the end of the parallel region.
+
+{\bf Check \#3}: is there is a \texttt{break} statement in the \texttt{for} loop ?\footnote{David Parks raised this possibility in class}.
+
+Sometimes it is appropriate to exit a \texttt{for} loop prematurely using the \texttt{break} command as in the following code that checks if there is an entry in an array that is larger than 10.
+\begin{minted}{c}
+int n, flag = 0;
+for(int n=0;n<N;++n){
+  if(v[n]>10){
+    flag = 1;
+    break;
+  }
+}
+\end{minted}
+The \texttt{break} command in this instance is designed to avoid checking remaining entries in the array as soon as an entry is found to exceed 10. 
+
+\emph{In contrast to what was said in class}: an OpenMP parallel for loop must not include a \texttt{break} or \texttt{return} statement.
+
+In the above code snippet we can still use OpenMP by removing the \texttt{break} command and changing the behavior so that all entries are checked by all threads. The following will work.
+
+\begin{minted}{c}
+int n, flag = 0;
+#pragma omp parallel for reduction(max:flag)
+for(int n=0;n<N;++n){
+  if(v[n]>10){
+    flag = 1;
+  }
+}
+\end{minted}
+
+{\bf Check \#4}: is there one or more accumulating heap variables. For instance to count the number of times values occur in an array ?\footnote{This might be of considerable practical use in assignment HW08 and HW09.}
+
+Consider the following code that counts how many times the integers in \texttt{[0,maxValue)} occur in an array of randomly chosen numbers.
+\begin{minted}{c}
+int Ndata = 10000;
+int *data = (int*) calloc(Ndata, sizeof(int));
+int Ncounts = 10;
+
+for(int n=0;n<Ndata;++n){
+  data[n] = drand48()*(Ncounts-1);
+}
+
+int *counts = (int*) calloc(Ncounts, sizeof(int));
+
+// count how many times each possible value occurs
+for(int n=0;n<Ndata;++n){
+  int value = data[n];
+  ++counts[value];
+}
+\end{minted}
+
+It is tempting to make the second \texttt{for} loop parallel with an OpenMP directive but we immediately recognize that incrementing the counter will likely cause race conditions as multiple threads will preempt each other when the counters are read, incremented, and written. 
+
+We might also think of using a critical or atomic region to protect incrementing the counter array entries, but we saw in class that this would be even slower than just executing the serial loop.
+
+Unfortunately, as far as I am aware, the OpenMP \texttt{reduction} clause will not work here as it is only permissible to use scalar variables for the reduction variables. So we are left with the task of manually creating an array of counters for each OpenMP thread which we then sum up after the parallel region as follows.
+
+\newpage
+\begin{minted}{c}
+// OpenMP multi-threaded code to count frequency of entries in an array 
+int Ndata = 10000;
+int *data = (int*) calloc(Ndata, sizeof(int));
+int Ncounts = 10;
+int Nthreads = omp_get_num_threads();
+
+// make sure data is in the range [0,Ncounts)
+for(int n=0;n<Ndata;++n){
+  data[n] = drand48()*(Ncounts-1);
+}
+
+int *counts = (int*) calloc(Ncounts*Nthreads, sizeof(int));
+
+// number of data samples to be counted by each thread
+// [ rounding up to make sure we cover the data set ]
+int blockSize = (Ndata+Nthreads-1)/Nthreads;
+  
+// count how many times each possible value occurs
+#pragma omp parallel
+{
+  // get index of this thread
+  int threadIndex = omp_get_thread_num();
+
+  // decide which range of loop indices this thread will process
+  int nstart = threadIndex*blockSize;
+  int nend   = (threadIndex+1)*blockSize;
+  
+  // make sure the last thread does not exceed the data array bound 
+  if(nend>N){ nend = N;}
+  
+  // find start of counts array for this thread
+  int *threadCounts = counts + threadIndex*Ncounts;
+  
+  // this thread loops over sub-range of original loop indices
+  for(int n=nstart;n<nend;++n){
+    int value = data[n];
+    ++threadCounts[value];
+  }  
+}
+
+// sum up counts from all threads
+for(int value=0;value<Ncounts;++value){
+  // loop over count data from other threads for value
+  for(int t=1;t<Nthreads;++t){
+     counts[value] += counts[value+t*Ncounts]
+  }
+}
+\end{minted}
+The above code combines several concepts discussed so far this semester. It is a little disappointing that to make such a simple loop parallel takes quite large amount of code albeit invoking very little OpenMP machinery explicitly.
+
+{\bf Check \#5}: does the loop body include function calls ?
+
+If the body of the \texttt{for} loop you intend to make parallel includes calls to one or more functions then you must again proceed with caution.
+
+For an innocuous looking example consider this serial for loop that fills the entries of an array with pseudo-random numbers generated by the \texttt{drand48} standard library function.
+\begin{minted}{c}
+int N = 1000;
+double *v = (double*) calloc(N, sizeof(double));
+
+// initialize random seed
+srand48(123456);
+
+for(int n=0;n<N;++n){
+  v[n] = drand48();
+}
+\end{minted}
+The first problem we have here is that the source code for \texttt{drand48} function is not readily available to us. Thus we cannot check to see what happens inside the function. However, we do know that \texttt{drand48} generates a sequence of double precision numbers in a predictable sequence. And therein lies the problem, if we make this loop parallel in the following way 
+\begin{minted}{c}
+#pragma omp parallel for
+for(int n=0;n<N;++n){
+  v[n] = drand48();
+}
+\end{minted}
+we suspect that the random number generator will generate the same sequence but now the threads executing in parallel will call \texttt{drand48} in a different order than if the loop was executing in serial. So a priori we know that the numbers stores in the \texttt{v} array will at best be shuffled compared to the output of the serial code. At worst we actually don't know if thread preemption will disturb the generation of the pseudo-random numbers and generate a different set of numbers that may not even be pseudo-randomly distributed.
+
+Fortunately the authors of the C standard libraries are aware of this issue: namely that \texttt{drand48} is not ``thread-safe'' because it maintains a private state variable in order to generate a sequence of numbers. We can thus side step the issue of threads preempting each other by using an alternative pseudo-random number generating function where the programmer has to maintain a separate seed for each thread. 
+
+Instead of using \texttt{srand48} and \texttt{drand48} to seed and generate the pseudo-random numbers respectivey we will use the ``reentrant'' versions \texttt{srand48\_r} and \texttt{drand48\_r}. The reentrant versions requires the calling code to provide a special struct that maintains the state usually hidden inside the non-reentrant versions. We use the reentrant versions in the following serial code
+
+\begin{minted}{c}
+int N = 1000;
+double *v = (double*) calloc(N, sizeof(double));
+
+// initialize random seed
+drand48_data  drandState;
+srand48_r(123456, &drandState);
+
+for(int n=0;n<N;++n){
+  drand48_r(&drandState,v+n);
+}
+\end{minted}
+
+We can use the reentrant pseudo-random number generating function in an OpenMP parallel for loop with confidence that the threads will not disrupt the ordinary function of the pseudo-random generator as follows.
+
+\begin{minted}{c}
+int N = 1000;
+double *v = (double*) calloc(N, sizeof(double));
+int Nthreads = omp_get_num_threads();
+
+// number of random numbesr to generate per thread
+int blockSize = (N+Nthreads-1)/Nthreads;
+
+#pragma omp parallel 
+{ // fork 
+
+  // get index of this thread
+  int threadIndex = omp_get_thread_num();
+
+  // decide which range of loop indices this thread will process
+  int nstart = threadIndex*blockSize;
+  int nend   = (threadIndex+1)*blockSize;
+  
+  // make sure the last thread does not exceed the data array bound 
+  if(nend>N){ nend = N;}
+
+  // initialize with a different seed per thread
+  drand48_data  drandState;
+  int seed = 123456 + threadIndex;
+  srand48_r(seed, &drandState);
+
+  for(n=nstart;n<nend;++n){
+    drand48_r(&drandState,v+n);
+  }
+} // join 
+\end{minted}
+
+The above code follows the same recipe as the threaded counting code. It uses a parallel region and assigns a subset of the for loop indices to each thread.
+
+{\bf Note}: to avoid each thread generating the same sequence of random numbers we modify the seed so that each thread uses a different seed to initialize the reentrant pseudo-random number generator data. In the end we will not generate the same exact list of pseudo-random numbers in the array for any given number of threads, but at least the numbers should be reasonably randomly distributed. 
+
+{\bf Bottom line}: if your for loop includes calls to functions that you cannot inspect your code may do unpredictable things. The magic phrase that may give you some reassurance in the documentation for such a function is that it is ``thread-safe''. Without that guarantee the results of your threaded calculations may disappoint. 
+
+Threaded code like that produced with OpenMP is notorious for generating complicated behavior even for simple codes. There is even a special section for multi-threaded code on the \href{https://en.wikipedia.org/wiki/Software_bug#Multi-threading}{wiki software bugs page}.
+
+\section{OpenMP: updated summary of compiler directives and API functions}
+
+Summary of OpenMP  API functions as discussed above.
+\begin{table}[htbp!]
+    \centering
+    \begin{tabular}{p{2in}|l} \hline
+      Action & OpenMP API call\\ \hline
+      Set number of threads in subsequent parallel regions & \texttt{omp\_set\_num\_threads([NUMBER OF THREADS]);} \\
+      Get number of threads in a parallel region & \texttt{int numThreads = omp\_get\_num\_threads();} \\
+      Get thread index inside a parallel region & \texttt{omp\_get\_thread\_num();} \\ \hline
+      Get wall clock time & \texttt{double t = omp\_get\_wtime();} \\
+    \hline\end{tabular}
+    \caption{Summary of commonly used OpenMP API functions.}
+    \label{ompDirectives.tab}
+\end{table}
+
+Summary of OpenMP compiler directives as discussed above.
+\begin{table}[htbp!]
+    \centering
+    \begin{tabular}{p{1.5in}|p{4in}} \hline
+      Action & OpenMP directive\\ \hline
+      Create a parallel region & \texttt{\#pragma omp parallel} \\
+      ... with shared/private vars & \texttt{\#pragma omp parallel shared([SHARED VARS]) private([PRIVATE VARS])} \\
+            ... with no default vars & \texttt{\#pragma omp parallel default(none) shared([SHARED VARS]) private([PRIVATE VARS])} \\
+       Partition a loop inside parallel region & \texttt{\#pragma omp for} \\
+       Create a parallel region to parallelize a for loop & \texttt{\#pragma omp parallel for} \\ \hline \hline
+       Serialize code in part of a parallel region & \texttt{\#pragma omp critical} \\
+       Serialize some arithmetic operations & \texttt{\#pragma omp atomic} \\
+       Add a variable to be reduced in a parallel region & \texttt{\#pragma omp parallel reduction([OP]:[VARIABLE NAME])} \\
+    \hline\end{tabular}
+    \caption{Summary of commonly used OpenMP directives.}
+    \label{ompDirectives.tab}
+\end{table}
+

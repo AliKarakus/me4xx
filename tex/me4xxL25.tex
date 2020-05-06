@@ -1,0 +1,430 @@
+\chapterauthor{Tim Warburton}
+\epigraph{Insert joke here}{TBD}
+
+\minitoc
+
+% 1.  CUDA programming model
+% 1.1 Offload computing model
+% 1.2 worked hello world example (add vectors)
+%  1.2.1 cudaMalloc
+%  1.2.2 cudaMemcpy
+%  1.2.3 kernel syntax (__global__, threadIdx, blockIdx)
+%  1.2.4 launching kernel
+%  1.2.5 running 
+
+Graphics processing units (GPUs) are ubiquitous. Pay attention for one day and see how many devices you interact with that contain some form of GPU. Some obvious electronic devices that you use frequently likely include a GPU: cell phone, tablet, laptop, desktop PC, workstation, cluster, cloud computing server, and game console. However, GPUs are also used in other consumer devices including: modern automobile (in particular Teslas - driving the console display or even driving the car), personal digital assistant (locally for the display and/or parsing speech input), smartwatch, tv streaming device (for decoding), some smart tvs, \ldots. 
+
+If you drove your Tesla (or more to the point it drove itself) to pick up some avocado toast, used a self checkout, paid with bitcoin, swiped your cell phone for coupons on that sweet avocado and artisan bread, did some work on your laptop, while streaming some Netflix, and ran some data analysis in the cloud today while demanding things from Alexa/Siri/Cortana/Google and taking a call on your smartwatch you have interacted with a surprisingly large number of GPUs without even consciously doing so. Sit back and relax on the couch and spend some well deserved time playing with your game console, that was a busy day.
+
+In many cases these consumer devices include so-called ``system-on-chips'' which package low power CPU cores, GPU cores, memory, as well as video decoders etc. The GPU cores are managing much of the large data tasks associated with displaying video, decoding/encoding audio, and painting fancy graphics. They are specifically designed because they require less energy than CPU cores for these tasks in particular for applications where power usage is important, for example any of these devices that is battery powered like the phone, tablet, or smartwatch.
+
+GPUs are an example of an  \href{https://en.wikipedia.org/wiki/Application-specific_integrated_circuit}{ASIC} (Application Specific Integrated Circuits) processor initially designed to accelerate rendering of 3D graphics for games. However, they were co-opted in the mid-2000s for more general purpose tasks as they were engineered to be less application specific and less focused purely on gaming applications. The field of general purposes GPU (GPGPU) computing coincided with the release of NVIDIA's Compute Unified Device Architecture (\href{https://en.wikipedia.org/wiki/CUDA}{CUDA}) programming language and API in 2007. NVIDIA positioned CUDA to extend the range of applications that GPUs could be used for. My personal interest in GPGPU computing was sparked by the impressive performance gains early adopters reported for their CUDA implementations. CUDA was released at about the time that CPUs were no longer getting clock bumps and were transitioning to multi-core architectures with some teething problems that meant getting good multi-threaded performance was not easy.
+
+\section{GPU overview}
+
+Before we dive into the specifics of the CUDA programming language that we will use to program NVIDIA GPUs we need to know something about GPU architectures. In these notes we will focus on discrete GPUs, that is GPUs which are distinct and separate from the CPU \footnote{There are also integrated GPUs, or iGPUs, that combine CPU and GPU cores. Once you know how to program discrete GPUs with CUDA then it is a short hop to programming iGPUs usually via the Open Compute Language (OpenCL) that was in turn based on CUDA but is able to be used on a wider range of CPUs and GPUs from multiple manufacturers.}.  
+
+\boximagelabel{figures/L25/CMDA3634FA19ComputeNodeBlockDiagram-crop.pdf}{Much simplified block diagram of compute node HOST (CPU) with one DEVICE (GPU). The double arrow line represents the interface between DEVICE and HOST, for example PCI-E or NVLink.}{computeNodeBlockDiagram.fig}
+
+
+In Figure \ref{computeNodeBlockDiagram.fig} we show a greatly simplified block diagram representing the arrangement of a CPU and GPU. We will use the following terminology when talking about GPU computing:
+
+{\bf HOST}: the HOST is the main computer that a GPU is attached to. For instance if a desktop contains a motherboard with CPU and GPU, then the motherboard and CPU play HOST to the GPU.
+
+{\bf DEVICE}: the DEVICE is the GPU which includes the GPU processor equipped with its own GPU memory.
+
+{\bf Notes \#1}: the HOST processor cannot directly access the DEVICE memory. Data must be transferred over the HOST$<>$DEVICE interface.
+
+{\bf Notes \#2}: the DEVICE processor cannot directly access the HOST memory. Data must be transferred over the HOST$<>$DEVICE interface.
+
+{\bf Notes \#3}: the data transfer rate between HOST and DEVICE is typically an order of magnitude slower than the rate between the DEVICE and its DEVICE memory. To get the best performance out of a heterogeneous compute node with both CPU and GPU it is advisable to keep the amount of data movement between the HOST and DEVICE to a minimum. Thus a typical calculation involves initializing data on the HOST, copying it to the DEVICE memory, doing as much work on the DEVICE as possible, then finally copying the result back to the HOST.
+
+\section{CUDA hello world}
+
+The standard CUDA ``hello world'' program for GPUs is a little different to the CPU hello world program. It is customary for the former to do the following
+\begin{enumerate}
+\setlength\itemsep{2pt}
+    \item Allocate array on HOST.
+    \item Allocate array on DEVICE.
+    \item Launch DEVICE compute kernel to fill the DEVICE array with values.
+    \item Copy data from DEVICE array to HOST array.
+    \item Print out values from HOST array.
+\end{enumerate}
+
+\subsection{CUDA hello world: HOST code}
+
+The following CUDA code implements the HOST side operations, the DEVICE side kernel implementation follows later in these notes. 
+
+\begin{minted}{c}
+#include <stdio.h>
+#include <stdlib.h>
+#include "cuda.h"
+
+int main(int argc, char **argv){
+  // 1. allocate HOST array     
+  int N = 1024;
+  int *h_a = (int*) calloc(N, sizeof(int));
+
+  // 2. allocate DEVICE array
+  int *c_a;
+  cudaMalloc(&c_a, N*sizeof(int));
+
+  // 3. launch DEVICE fill kernel   
+  int T = 256; // number of threads per thread block
+  dim3 G( (N+T-1)/T ); // number of thread blocks to use
+  dim3 B(T);
+
+  int val = 999; // value to fill DEVICE array with
+  fillKernel <<< G,B >>> (N, val, c_a);
+
+  // 4. copy data from DEVICE array to HOST array       
+  cudaMemcpy(h_a, c_a, N*sizeof(int), cudaMemcpyDeviceToHost);
+
+  // 5. print out values on HOST    
+  for(int n=0;n<N;++n) printf("h_a[%d] = %d\n", n, h_a[n]);
+
+  // 6. free arrays               
+  cudaFree(c_a);
+  free(h_a);
+  return 0;
+}
+\end{minted}
+
+You should notice that some of this code is nonstandard C. In fact the CUDA language contains extensions to standard C tailored for GPU specific operations. The following notes call out some of the special operations and syntax in the above CUDA code.
+
+{\bf Note \#1}: we must include the CUDA header file \texttt{cuda.h} since it includes the prototypes for all CUDA API functions.
+
+{\bf Note \#2}: all CUDA functions\footnote{In the CUDA runtime API} start with ``cuda'' and follow standard camel case notation.
+
+{\bf Note \#3}: we specify the number of thread-blocks and the number of threads per thread-block to use through the arguments placed in the unconventional triple chevrons when we launch a compute kernel (the $<<<\;\ldots\;>>>$ decoration in the \texttt{fillKernel} call).
+
+{\bf Note \#4}: we have used three CUDA API calls here, namely \texttt{cudaMalloc}, \texttt{cudaMemcpy}, and \texttt{cudaFree}. Their names are fairly self evident and you can find out more details about them through your favorite search engine.
+
+{\bf Note \#5}: the kernel launch is an asynchronous, non-blocking request. The launch request is sent to the GPU and the HOST program execution continues before the kernel is guaranteed to have finished.
+
+{\bf Note \#6}: the \texttt{cudaMemcpy} function blocks until all previously queued kernels and the data copying requested have completed. Thus in this code after the \texttt{cudaMemcpy} returns we know that the kernel execution has completed and that the data has been copied to the HOST array.
+
+
+\subsection{CUDA hello world: DEVICE code}
+
+The HOST side code above makes a call to code that executes on the DEVICE. Understanding the syntax and specifics of the CUDA programming model for executing tasks on the GPU is one of the greatest hurdles for a new GPU programmer.  Before we dive into the actual GPU kernel code let's consider a simple serial function that fills the entries in an array as follows
+\begin{minted}{c}
+void fillSerial(int N, int val, int *h_a){
+
+  for(int n=0;n<N;++n){
+    h_a[n] = val;
+  }
+
+}
+\end{minted}
+Unfortunately we cannot use this code as is to program the GPU task. The most immediate problem is that the ``for'' loop is suitable for a serial processor to sequentially perform the array value assignments. We are going to mutate this code step by step until it is suitable for a GPU processor by adding one concept at a time. 
+
+First we recall that a GPU has an architecture with two levels of parallelism: multiple compute cores that each has multiple thread processors. Thus we are going to split the fill loop into two nested loops where we are contemplating parallelizing the outer loop by distributing outer iterations to cores and inner loop iterations to thread processors in each core.
+\begin{minted}{c}
+void fillSerialTwoLevel(int B, int N, int val, int *h_a){
+
+  for(int b=0;b<(N+B-1)/B;++b){ // outer loop
+    for(int t=0;t<B;++t){ // inner loop
+      int n = t + b*B;
+      if(n<N){ // check n is in [0,N)
+        h_a[n] = val;
+      }
+    }
+  }
+}
+\end{minted}
+This should be reminiscent of OpenMP a little bit where we split for loops amongst threads, although we have not added the syntactical sugar needed to make this a parallel code. This type of loop splitting is sometimes also called loop-chunking. 
+
+The next step in making this GPU worthy CUDA code might be the most confusing thing about programming GPUs. The double nested loop is now organized in exactly the form we need for CUDA. Each iteration of the outer loop can be processed by a GPU core, and each iteration of the inner loop for that outer iteration can be processed by a thread-processor in the SIMD vector unit for that core. 
+
+We can now mutate the \texttt{fillSerialTwoLevel} function into a CUDA kernel with the syntactical changes shown in the code below where we have removed the explicit mention of the for loops that are not needed anymore since each iteration is handled by a thread. 
+
+\begin{minted}{c}
+__global__ void fillKernel(int N, int val, int *c_a){
+
+  // find index of thread relative to thread-block
+  int t = threadIdx.x;
+  
+  // find index of thread-block relative to grid of thread-blocks
+  int b = blockIdx.x;
+  
+  // find number of threads in thread-block
+  int B = blockDim.x;
+
+  // map from thread and thread-block indices into linear array index
+  int n = t + b*B;
+
+  // check index is in range
+  if(n<N)
+    c_a[n] = val; // work done by thread
+
+}
+\end{minted}
+There are several novel aspects to the kernel that we describe in the following notes.
+
+{\bf Note \#1}: we tell the CUDA compiler that this is a CUDA DEVICE kernel with the annotation \texttt{\_\_global\_\_}. 
+
+{\bf Note \#2}: this DEVICE side code is executed by every thread in every block of threads launched on the DEVICE by the HOST side code.
+
+{\bf Note \#3}: we should only pass DEVICE pointers into that third argument when invoking the kernel, since the code is executing on the DEVICE and only has efficient direct access to global DEVICE memory.
+
+{\bf Note \#4}: we find the rank of the thread relative to its thread-block using the intrinsic \texttt{threadIdx} struct variable that is provided to each thread.
+
+{\bf Note \#5}: we find which thread-block the current thread belongs to through the intrinsic \texttt{blockIdx} struct variable that is provided to each thread.
+
+{\bf Note \#6}: we find out how many threads are in each thread-block through the intrinsic \texttt{blockDim} struct variable that is provided to each thread. 
+
+{\bf Note \#7}: once a thread knows its thread number, thread-block number, and the number of threads per thread-block, it uses these numbers to identify the index value for the array entry it will fill. Each thread in the above code will only set one value.
+
+{\bf Note \#8}: there is more than one way to decide based on thread rank and thread block rank what each thread should do. Try experimenting with the way \texttt{t} and \texttt{b} are used to select array index \texttt{n}.
+
+{\bf Note \#9}: the thread block dimension is determined by the launch parameters inside the triple chevrons at the kernel call side in the HOST side code.
+
+{\bf Note \#10}: when we partition the for loop and construct the thread map we should carefully check that there is no loop carried dependence, order of iteration dependence, array write conflict. In fact we need to check all the same conditions that we checked when we made a loop parallel with the OpenMP \texttt{\#pragma parallel for} loop construct. The same conditions apply since we need to guarantee that the threads will not step on each other as they execute the kernel code.
+
+It can be intimidating to realize that we are responsible as CUDA developers to decide on how many thread-blocks, threads per thread-block are needed and how the work should map into this set of threads. However, the development of many DEVICE compute kernels follows this approach of first writing the serial code then chunking the loops in a way that makes sense for the two level parallel architecture of the GPU. 
+
+\subsection{CUDA hello world: compiling code}
+
+Once we have written a CUDA program and saved it with the \texttt{.cu} file extension we will use the NVIDIA CUDA compiler \texttt{nvccc} to compile it into an executable as follows.
+
+\myvbox[mytermbg]{nvcc -o cudaHelloWorld cudaHelloWorld.cu}
+
+However, there is major obstacle to doing this: the CUDA compiler \texttt{nvcc} is not always installed on a system. It can be installed in Ubuntu as part of the CUDA SDK with
+
+\myvbox[mytermbg]{sudo apt-get install cuda}
+
+but there is another problem. It is quite likely that your VirtualBox does not hardware virtualize your CUDA enabled GPU, if you even have one on your laptop.
+
+So in summary, you probably do not have the CUDA compilers installed on your laptop and even if you do have the compilers you probably cannot access your NVIDIA GPU even if you have one installed.
+
+Do not despair ! We are using the ARC cascades cluster precisely because some of the compute nodes are equipped with NVIDIA GPUs and the CUDA compilers/drivers/libraries are installed and can be made available using the module system.
+
+\subsubsection{CUDA hello world: running on cascades}
+
+First you need to get access to a GPU equipped compute node on cascades. You can do this with by selecting the v100\_dev\_q when using slurm alloc\footnote{For more information about the NVIDIA V100 enabled compute nodes on cascades see \href{https://www.arc.vt.edu/computing/cascades/}{here}} with:
+
+\myvbox[mytermbg]{salloc --partition=v100\_dev\_q --nodes=1 --tasks-per-node=28  -Acmda3634}
+
+Once you have an allocation you should load the CUDA module with
+
+\myvbox[mytermbg]{module load gcc cuda}
+
+Finally you should locate the code you need to compile and build with \texttt{nvcc} as follows
+
+\myvbox[mytermbg]{cd cmda3634/L25 \\ nvcc -o cudaHelloWorld cudaHelloWorld.cu }
+
+If that worked then the next step is plain sailing since the CUDA executable can be run just like a regular executable
+
+\myvbox[mytermbg]{./cudaHelloWorld \\
+h\_a[0] = 999\\
+h\_a[1] = 999\\
+h\_a[2] = 999\\
+h\_a[3] = 999\\
+h\_a[4] = 999\\
+h\_a[5] = 999\\
+h\_a[6] = 999\\
+h\_a[7] = 999\\
+h\_a[8] = 999\\}
+
+\section{CUDA you do this ?}
+
+Now consider the ramifications of all the requirements CUDA puts on the programmer, as introductory level CUDA programming obliges one to:
+
+\begin{enumerate}
+    \item Explicitly allocate data array(s) on DEVICE.
+    \item Copy data from HOST array to DEVICE array.
+    \item Decide how many threads to use to process task on DEVICE.
+    \item Write threaded code for the DEVICE task processed by all threads.
+    \item Copy data result from DEVICE array to HOST array.
+    \item Not confuse data stored on DEVICE and HOST.
+\end{enumerate}
+
+This extra programming burden has been enough to put many programmers off adopting CUDA in their code projects. Maintaining coherency between data that resides on HOST and data that resides on DEVICE can be a significant challenge for large software projects. Many times a programmer does not even know if a pointer to an array refers to a HOST heap array or a DEVICE heap array. This can easily happen in large programming projects with significant code bases where operations are performed by a collection of inscrutable or impenetrable black box software libraries. 
+
+NVIDIA is aware of this issue and added some features to CUDA to make the memory management between two memory spaces (HOST and DEVICE) issue less irksome. In particular they introduce so-called ``unified virtual memory'' (UVM) which we discuss in the next section. 
+
+\section{CUDA unified virtual memory}
+
+With the prevalence of 64-bit pointers it is now possible to encode physical location of a memory address into extra bits in the pointer. Using excess bits in the pointer it is possible to indicate/determine whether an array is located on HOST, DEVICE, or with managed memory possibly both. 
+
+A programmer can allocated a DEVICE array with the \texttt{cudaMallocManaged} CUDA API function which I believe also allocates a HOST array at the same time as the DEVICE array is allocated. The HOST code can access and read/write via the managed pointer to the HOST side copy of the array. When a managed array pointer is passed to a CUDA DEVICE kernel the OS will detect when blocks of data from the HOST side array must be copied to the DEVICE side version of the array and will automatically migrate the data from HOST to DEVICE. 
+
+Using UVM the above HOST code for the CUDA hello world simplifies to
+
+\begin{minted}{c}
+// use Unified Virtual Memory in hello world
+// see: L25/cudaUnifiedMemory.cu
+#include <stdio.h>
+#include <stdlib.h>
+#include "cuda.h"
+
+int main(int argc, char **argv){
+
+  int N = 1024;
+ 
+  // 1. allocate managed HOST/DEVICE array
+  int *u_a;
+  cudaMallocManaged(&u_a, N*sizeof(int));
+
+  // 2. launch DEVICE fill kernel   
+  int T = 256; // number of threads per thread block
+  dim3 G( (N+T-1)/T ); // number of thread blocks to use
+  dim3 B(T);
+
+  int val = 999; // value to fill DEVICE array with
+  fillKernel <<< G,B >>> (N, val, u_a);
+
+  // 3. synchronize with GPU (block until fillKernel finishes)
+  cudaDeviceSynchronize();
+
+  // 4. print out values on HOST    
+  for(int n=0;n<N;++n) printf("u_a[%d] = %d\n", n, u_a[n]);
+
+  // 5. free arrays               
+  cudaFree(u_a);
+
+  return 0;
+}
+\end{minted}
+Notice how the code is a little more streamlined than the original hello world CUDA program. We do not need to explicitly copy data between HOST and DEVICE as this is now automated through the use of CUDA managed memory. However, note that we had to add a \texttt{cudaDeviceSynchronize} call before printing out values from the managed array on the HOST. This is vital to guarantee that the kernel has finished on the DEVICE. It is critical to do this before we access the DEVICE array (\texttt{u\_a}) from the HOST. Just reading from that array on the HOST actually requires data be copied behind the scenes from the DEVICE array to the HOST array.
+
+
+There is a reasonable tutorial  on using GPU UVM for beginners \href{https://devblogs.nvidia.com/unified-memory-cuda-beginners/}{here}. However, before you get too excited it is important to note that longtime practioners of GPGPU computing find that the automatic migration of data between HOST and DEVICE may incur considerable overhead and reductions in performance. The just in time nature of the managed memory migration may not be as efficient as manually moving large blocks of data with \texttt{cudaMemcpy}.
+
+\section{CUDA timers}
+
+%% https://devblogs.nvidia.com/how-implement-performance-metrics-cuda-cc/
+
+A key aspect of analyzing the performance of OpenMP and MPI codes was accurately estimating the time a task takes. With accurate elapsed time estimates we were able to convincingly explain the strong scaling characteristics of a distributed array reduction operation performed using MPI for instance. Fortunately the CUDA API includes a mechanism for accurately estimating how long it takes to complete computational tasks on the DEVICE too.
+
+Timing tasks on a CUDA DEVICE is complicated slightly by the asynchronous nature of the DEVICE. In order to time how long something takes on the DEVICE we first have to recognize that even though a kernel launch command is issued now, it actually may not execute until some time in the future. Is it fair to time a task on a DEVICE when it is busy performing the previous ten tasks we asked of it ?
+
+Instead of asking for the DEVICE wall clock at a given instance we insert an event into the DEVICE job queue before queuing the tasks we wish to time and after those tasks have been queued. Then using the built in CUDA event timers we kind find out afterwards what the actual elapsed time was as far as the DEVICE is concerned between the start and end timing events were queued. In practice this gives very accurate timings for DEVICE tasks.
+
+To demonstrate how this is done we added CUDA event based timings to the CUDA hello world program we saw earlier as follows.
+
+\begin{minted}{c}
+  // 1. allocate HOST array
+  int *h_a = (int*) calloc(N, sizeof(int));
+  int *c_a;
+
+  // 2. allocate DEVICE array
+  cudaMalloc(&c_a, N*sizeof(int));
+
+  // 3. create events
+  cudaEvent_t start, end;
+  cudaEventCreate(&start);
+  cudaEventCreate(&end);
+
+  // 4. calculate number of thread-blocks and threads per thread-block to use
+  int T = 256;
+  dim3 G( (N+T-1)/T );
+  dim3 B(T);
+
+  // 5. record start event
+  cudaEventRecord(start);
+
+  // 6. launch CUDA DEVICE kernel
+  int val = 999;
+  fillKernel <<< G,B >>> (N, val, c_a);
+
+  // 7. insert end record event in stream
+  cudaEventRecord(end);
+
+  // 8. copy data from DEVICE array to HOST array
+  cudaMemcpy(h_a, c_a, N*sizeof(int), cudaMemcpyDeviceToHost);
+
+  // 9. print out elapsed time
+  float elapsed;
+  cudaEventSynchronize(end);
+  cudaEventElapsedTime(&elapsed, start, end);
+  elapsed /= 1000.; // convert to seconds
+
+  printf("elapsed time: %g\n", elapsed);
+\end{minted}
+In the above example we created two CUDA event objects \texttt{start} and \texttt{end} using \texttt{cudaEventCreate}. We then inject the \texttt{start} event into the job queue on the DEVICE before launching the kernel. Next we inject the \texttt{end} event into the DEVICE queue after the kernel. We guarantee that the timing events have completed by synchronizing HOST and DEVICE through calling \texttt{cudaEventSynchronize}. Finally we measure the time that elapsed in the processing of the DEVICE queue between the \texttt{start} and \texttt{end} events.
+
+
+For more details on using CUDA event based timings see \href{https://devblogs.nvidia.com/how-implement-performance-metrics-cuda-cc/}{the NVIDIA CUDA developer blog}.
+
+\section{CUDA: vector operations}
+
+In this section we give some examples of CUDA kernel implementations of array operations.
+
+\subsection{CUDA vector addition}
+
+The model we followed above in the \texttt{fillKernel} is typical of a CUDA kernel. The basic plan is to create a map between the thread index and thread-block index and a linear index. Each thread then uses this single index to decide which array entry or entries to work on.
+
+In the following \texttt{addVectorsKernel} each thread computes the sum of a single entry from two arrays of \texttt{float} values and write it to a third array [ In MATLAB: \texttt{c = a + b} ]
+
+\begin{minted}{c}
+__global__ void addVectorsKernel(int N, float *c_a, float *c_b, float *c_c){
+
+  // find index of thread relative to thread-block
+  int t = threadIdx.x;
+  
+  // find index of thread-block relative to grid of thread-blocks
+  int b = blockIdx.x;
+  
+  // find number of threads in thread-block
+  int B = blockDim.x;
+
+  // map from thread and thread-block indices into linear array index
+  int n = t + b*B;
+
+  // check index is in range
+  if(n<N)
+    c_c[n] = c_a[n] + c_b[n]; // work done by each thread
+
+}
+\end{minted}
+
+
+\subsection{CUDA vector entry-wise multiplication}
+
+In the following \texttt{dotMultiplpyVectorsKernel} each thread computes entry-wise product of two arrays of \texttt{float} values and write it to a third array. [ In MATLAB: \texttt{c = a.*b} ]
+
+\begin{minted}{c}
+__global__ void dotMultiplyVectorsKernel(int N, float *c_a, float *c_b, float *c_c){
+
+  // find index of thread relative to thread-block
+  int t = threadIdx.x;
+  
+  // find index of thread-block relative to grid of thread-blocks
+  int b = blockIdx.x;
+  
+  // find number of threads in thread-block
+  int B = blockDim.x;
+
+  // map from thread and thread-block indices into linear array index
+  int n = t + b*B;
+
+  // check index is in range
+  if(n<N)
+    c_c[n] = c_a[n] * c_b[n]; // work done by each thread
+
+}
+\end{minted}
+
+
+\section{CUDA: summary of API functions}
+
+Summary of CUDA API functions as discussed above.
+\begin{table}[htbp!]
+    \centering
+    \begin{tabular}{p{2in}|p{4in}} \hline
+      Action & CUDA API call\\ \hline
+      Allocate array on DEVICE & \texttt{cudaMalloc(\&[POINTER], [NUMBER OF BYTES]);} \\
+      Allocate managed array on HOST/DEVICE &  \texttt{cudaMallocManaged(\&[POINTER], [NUMBER OF BYTES]);} \\ \hline
+      Copy data from HOST to DEVICE & \texttt{cudaMemcpy([DEVICE POINTER], [HOST POINTER], [NUMBER OF BYTES], cudaMemcpyHostToDevice);} \\
+      Copy data from DEVICE to HOST & \texttt{cudaMemcpy([HOST POINTER], [DEVICE POINTER], [NUMBER OF BYTES], cudaMemcpyDeviceToHost);} \\ 
+      Free DEVICE array & \texttt{cudaFree([DEVICE POINTER]);} \\ \hline
+      Launch kernel on DEVICE & \texttt{[KERNEL NAME] $<<<$ [NUMBER OF THREAD BLOCKS], [THREADS PER THREAD-BLOCK] $>>>$ ([ARGS]);} \\
+      Block until DEVICE queue flushes & \texttt{cudaDeviceSynchronize();} \\
+    \hline\end{tabular}
+    \caption{Summary of commonly used OpenMP API functions.}
+    \label{ompDirectives.tab}
+\end{table}
+
+\printbibliography[heading=subbibliography]

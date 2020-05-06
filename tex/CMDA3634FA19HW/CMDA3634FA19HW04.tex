@@ -1,0 +1,151 @@
+
+\noindent \textbf{Directions}: 
+
+\begin{enumerate}
+\item Use \LaTeX{} to create at least one of the two options. 
+\item A score of 20 points will be considered full credit.
+
+\item Save the .tex file as 
+\begin{center}
+[LAST NAME]\_[FIRST NAME]\_HW04\_Option[NUMBER].tex
+\end{center} 
+\item When finished, upload BOTH the tex file and the pdf file created to Canvas by clicking on the Assignments tab on the left side of the CMDA3634 Canvas page.
+\item You may choose to attempt both options for a maximum of up to 30 points. If you attempt both options upload both sets of files.
+\end{enumerate}
+
+\newpage
+\section*{Option 1 [20 points]}
+Starting with a template from
+\begin{center}
+\url{https://www.sharelatex.com/templates/cv-or-resume}
+% https://www.overleaf.com/gallery/tagged/cv
+\end{center}
+produce your own CV (curriculum vitae) describing your activities relevant to seeking a job.
+The document does not need to be limited to a single page,
+but it should not be significantly less than one page.
+For this class, you won't be graded on the content of your CV.
+If you need to fill out more space, you may invent fictional activities (e.g. 2018-present: elephant wrangler, and that is in fact a real job involving a large shovel).
+
+Your CV should be professional looking and a document that you can keep updating as you gain more experience.
+
+\subsection*{Rubric}
+\begin{itemize}
+    \item (10 points) Successful communication of activities using sections and spacing in a way that makes navigation of the document easy.
+    \item (10 points) Overall professional appearance.
+\end{itemize}
+\begin{center}\rule{0.8\textwidth}{.4pt}\end{center}
+
+\newpage
+\section*{Option 2 [20 points]}
+After the table on the next page, there are two pages with mathematical text.
+Reproduce this text as closely as possible, but replace ``Your Name'' with your actual name.
+Pay attention to indentation, alignment, brackets, punctuation, symbols, section headers, and spacing.
+You should find yourself using the \LaTeX{} features in the table on the next page.
+
+\subsection*{Rubric}
+\begin{itemize}
+    \item (10 points) Content: having the correct words, variables, and symbols.
+    \item (10 points) Style: using the correct spacing and formatting.
+\end{itemize}
+
+\begin{center}\rule{0.8\textwidth}{.4pt}\end{center}
+
+\begin{center}
+\begin{tabular}{l|l} \hline
+Feature & Purpose \\ \hline \hline
+\texttt{\tbs documentclass[11pt]\{article\}} & declare the type of document and \\&set the default text size\\ \hline
+\texttt{\tbs usepackage\{amsfonts\}} & load the blackboard bold font (e.g. $\mathbb{R}$)\\
+\texttt{\tbs usepackage\{amsthm\}} & load theorem and proof environments\\
+\texttt{\tbs newtheorem\{thm\}\{Theorem\}} & define an environment called ``\texttt{thm}''\\
+& for making theorem statements. The word\\
+&``\texttt{Theorem}'' will be inserted at the beginning\\
+&of this environment\\
+\texttt{\tbs author\{Your Name\}}  & preamble macro to define author's name \\ 
+\texttt{\tbs title\{Document Title\}}  & preamble macro to define title of paper \\ \hline
+\texttt{\tbs begin\{document\}}  & start of body of document \\
+\texttt{\tbs end\{document\}}  & end of body of document \\ \hline
+\texttt{\tbs maketitle}  & macro to create title \\
+\texttt{\tbs begin\{abstract\}}  & start of abstract text \\
+\texttt{\tbs end\{abstract\}}  & end of abstract \\ \hline
+\texttt{\tbs begin\{thm\}}  & start theorem statement \\
+\texttt{\tbs end\{thm\}}  & end the theorem statement \\ \hline
+\texttt{\tbs begin\{proof\}}  & start theorem proof \\
+\texttt{\tbs end\{proof\}}  & end the theorem proof \\ \hline
+\texttt{\tbs section\{Section Title\}}  & insert section header. \\ \hline
+\texttt{\tbs[}  & start local math environment,\\&centered and on a separate line \\ 
+\texttt{\tbs]}  & end local  math environment \\
+\texttt{\$ math stuff \$} & math environment within the paragraph\\
+\hline
+\texttt{\tbs sqrt\{argument\}}  & display square root of argument \\
+\texttt{x\string^2}  & raise the baseline of 2 to the power position \\ 
+\texttt{\tbs frac\{a\}\{b\}}  & fraction macro for $\frac{a}{b}$\\
+\texttt{\tbs left(}  & left parenthesis that grows to match contents \\
+\texttt{\tbs right)}  & matching right-parenthesis \\
+\texttt{\tbs in}  & in symbol ($\in$) \\
+\texttt{\tbs neq}  & not equal sign ($\neq$) \\
+\texttt{\tbs pm}  & plus-minus symbol ($\pm$) \\
+\hline
+
+\end{tabular}
+\end{center}
+
+\newpage
+%\clearpage
+%\setcounter{page}{1}
+
+%\newpage
+% \maketitle
+ 
+% \begin{abstract}
+%% hacked for the moment
+\begin{center}
+{\bf Abstract}: \emph{A brief proof of the classical formula for the roots of a quadratic polynomial.}
+\end{center}
+% \end{abstract}
+ 
+\section{Introduction}
+In this section we present a brief proof of the classical formula used to obtain the roots of a quadratic polynomial. 
+
+\begin{thm}
+Given $a,b,c\in \mathbb{R}$ with $a\neq 0$ the following equation 
+\[
+ax^2 + bx + c = 0,
+\]
+has at most two solutions given by
+\[
+x = \frac{ -b \pm \sqrt{b^2 - 4ac}}{2a}.
+\]
+\end{thm}
+\begin{proof}
+Given
+\[
+ax^2 + bx + c = 0,
+\]
+we first multiply through by $a$
+\[
+a^2x^2 + abx + ac = 0,
+\]
+and  we subsequently ``complete the square''
+\[
+\left(ax + \frac{b}{2}\right)^2 - \frac{b^2}{4} + ac = 0.
+\]
+Next we move terms to the right hand side
+\[
+\left(ax + \frac{b}{2}\right)^2 = \frac{b^2}{4} - ac.
+\]
+Taking the square root of either side
+\[
+ax + \frac{b}{2} = \pm \sqrt{\frac{b^2}{4} - ac},
+\]
+and rearranging gives
+\[
+ax = -\frac{b}{2} \pm \sqrt{\frac{b^2}{4} - ac}.
+\]
+Finally since by assumption $a\neq 0$ we divide both sides by $a$, factor $1/4$ out of the square root, and express the whole thing as a convenient single fraction 
+\[
+x = \frac{ -b \pm \sqrt{b^2 - 4ac}}{2a},
+\]
+concluding the proof.
+\end{proof}
+\section{Conclusion}
+In this article we have presented a proof of the classical formula for roots of a quadratic polynomial.

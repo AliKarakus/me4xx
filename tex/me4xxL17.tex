@@ -1,0 +1,120 @@
+\chapterauthor{Tim Warburton}
+
+% viz:
+% isend, irecv, work, wait
+% send, recv
+% sendrecv
+% 
+
+\epigraph{The purpose of visualization is insight, not pictures}{
+Ben Shneiderman, \href{http://interactions.acm.org/blog/view/the-purpose-of-visualization-is-insight-not-pictures-an-interview-with-ben}{AMC Interactions blog}}
+
+\minitoc
+
+%\section{Visualizing MPI program execution with Jumpshot}
+%% TO ADD: 
+%% timing 
+%% examples from Lecture 15
+In the last lecture we used cartoonish illustrations of MPI program execution timelines to help explain how communication patterns theoretically progress in time. There is a very useful toolchain that can actually monitor all MPI API calls and help visualize MPI programs as experiments. The Message Passing Environment (MPE) intercepts all MPI API function calls and creates time stamps for their entry and exit. Sadly since this is an auxiliary capability add-on for MPI it is not uniformly supported across all MPI implementations \footnote{To generate MPI timeline profiles in a professional toolchain you can consider using one of several commercial packages.}
+
+\section{Installing MPE and Jumpshot on your Ubuntu VirtualBox}
+We can install a version of MPICH with MPE logging and the Jumpshot GUI for analyzing timelines you can use the following set of esoteric Terminal operations summed up as: install the \texttt{make}  app, the Java developer kit, and manually configure/build/install MPICH2.
+
+\begin{tsession}{mytermbg}
+\begin{Verbatim}[frame=single]
+# commands to install mpich2 with mpe and jumpshot
+cd ~/
+
+# make sure make is installed
+sudo apt-get install make
+
+# install openjava (do this first)
+sudo apt-get install openjdk-8-jre
+
+# get mpich2 v1.4 tarball and extract files
+wget http://www.mcs.anl.gov/research/projects/mpich2/downloads/tarballs/1.4/mpich2-1.4.tar.gz
+tar -zxvf mpich2-1.4.tar.gz
+
+# build mpich2
+cd mpich2-1.4
+mkdir build
+cd build
+../configure MPI_CC=mpicc --disable-f77 --with-slog2 --disable-fc
+
+make
+sudo make install
+\end{Verbatim}
+\end{tsession}
+
+The above sequence of operations are commonly used when installing a package from source code, nowadays hidden behind package managers.
+
+\section{Generating MPI timelines}
+
+To compile the \texttt{mpiSendRecv.c} example with MPE logging enabled we proceed as follows.
+
+\myvbox[mytermbg]{\# compile with MPE logging baked into executable \\
+mpicc -o mpiSendRecv mpiSendRecv.c -llmpe -lmpe
+}
+
+We run as usual, but in the output below notice that MPE has added some extra output notificationst that it is writing a logfile.
+\begin{tsession}{mytermbg}
+\begin{Verbatim}[frame=single]
+# run executable
+mpiexec -n 2  ./mpiSendRecv
+  Writing logfile....
+  Enabling the Default clock synchronization...
+  Finished writing logfile ./mpiSendRecv.clog2.
+\end{Verbatim}
+\end{tsession}
+
+Finally we can visualize the MPE log file using \texttt{jumpshot} with
+\myvbox[mytermbg]{\# visualize output MPE log file with jumpshot \\
+jumpshot  mpiSendRecv.clog2 
+}
+The output is shown in Figure \ref{mpiSendRecv.fig}. This is not a cartoon. Each horizontal line represents the actual measured time stamps for all MPI API calls made during the program execution by one MPI process.
+\boximagelabel{figures/L17/jumpshotTimelineSendRecv.png}{Jumpshot timeline for \texttt{mpiSendRecv.c}}{mpiSendRecv.fig}
+
+ In the figure the time spent in \texttt{MPI\_Send} is shown as a blue box on the rank 0 timeline, and the time spent in \texttt{MPI\_Recv} is shown by the green box on the rank 1 timeline. The arrow joining the two boxes indicates the flow of data from sender to receiver. See the legend window on the left hand side of the time line for a key to all the MPI API calls.
+
+\section{Using MPE logging on the ARC cascades cluster}
+
+The MPE2 logging library for MPI profiling is already installed on cascades however you need to load the appropriate modules to use it as follows.
+
+\myvbox[mytermbg]{\# load modules \\ 
+module load gcc openmpi jdk mpe2
+}
+
+Once the modules are loaded we can enable MPE logging at compile time by using the \texttt{mpecc} compiler with the following additional libraries
+
+\myvbox[mytermbg]{mpecc -mpilog -o mpiReduce mpiReduce.c myReduce.c  -llmpe -lmpe}
+
+We run with \texttt{mpiexec} on a compute node of cascades as usual and get the following output
+
+\myvbox[mytermbg]{salloc --partition=dev\_q --nodes=1 --tasks-per-node=6  -Acmda3634 \\
+salloc: Granted job allocation 208693\\
+salloc: Waiting for resource configuration\\
+salloc: Nodes ca026 are ready for job\\
+tcew@ca026:\$ mpiexec -n 6 ./mpiReduce\\
+hand rolled reduced value: 15\\
+MPI\_Reduced value: 15\\
+Writing logfile....\\
+Enabling the Default clock synchronization...\\
+Finished writing logfile ./mpiReduce.clog2.}
+
+{\bf Note \#1}: there are three additional lines of terminal messages output by the MPE library culminating in the message that a log file called \texttt{./mpiReduce.clog2} has been created.
+
+{\bf Note \#2}: we can use \texttt{jumpshot} to visualize the output but we cannot do it directly from a cascades compute node as it is not possible to tunnel the GUI graphics to your laptop. Instead we will need to set up a special \texttt{ssh} connection from your VirtualBox to the \underline{cascades login node} that tunnels the X windows from the node to your VirtualBox with the \texttt{-X} flag as follows.
+
+\myvbox[mytermbg]{ssh -X pid@cascades1.arc.vt.edu}
+
+Once you are logged in you should load the modules needed for MPE, locate the directory containing the \texttt{clog2} log file and then launch \texttt{jumpshot} as usual. 
+
+\myvbox[mytermbg]{module load gcc openmpi jdk mpe2\\
+cd cmda3634/L19 \\
+jumpshot mpiReduce.clog2}
+
+You will likely notice that there is quite a significant lag when using \texttt{jumpshot} remotely.
+
+If everything goes well and you are running the \texttt{mpiReduce.c} code borrowed from lecture 19 then you should see a plot like Figure \ref{mpiReduce.fig}.
+
+\boximagelabel{figures/L19/jumpshotMPIReduce.png}{Jumpshot timeline for \texttt{mpiReduce.c}}{mpiReduce.fig}

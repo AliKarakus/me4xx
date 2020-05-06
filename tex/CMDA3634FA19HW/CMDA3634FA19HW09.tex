@@ -1,0 +1,217 @@
+\subsubsection*{Assignment overview}
+\noindent You have two tasks in this assignment.
+
+\vspace{8pt}\noindent {\bf Task \#1}: Modify the code in \texttt{parallelQuiz.c} to make as many of its loops run in parallel as possible. In your report, explain which loop(s) cannot be parallelized and why some of them work without modification.
+\\
+\vspace{4pt}\noindent {\bf Task \#2}: Use OpenMP to make your k-means code run in parallel.
+\begin{tcolorbox}[width=\textwidth,colback=green]
+If your code from Homework 7 did not work, you may use the instructor's code that is posted on Canvas \href{https://canvas.vt.edu/courses/95914/files/folder/Homework/HW07\%20example}{here}.
+Read and understand this code and determine what changes will need to take place in order to parallelize it.
+\end{tcolorbox}
+\vspace{8pt}\hrule 
+
+\subsubsection*{Task \#1: Parallelization quiz}
+You will parallelize some for-loops.
+You will have a section in your report to answer questions about the loops,
+and you will implement any necessary changes in the C file itself.
+\begin{itemize}
+    \item[Q1] (25pts) For each for-loop, below (A through K), read the comment describing its intended behavior.
+    Then decide which of the following statements applies.
+    Explain your answer as indicated.
+    \begin{itemize}
+        \item \underline{The loop can be parallelized without modification}.
+        Use the loop analysis methods shown in class to justify your answer.
+        
+        In the C file itself, insert the OMP compiler directive to make the loop run in parallel.
+        \item \underline{The loop can be parallelized, but the code inside must be modified}.
+        In this case, write a parallelized version of the loop (formated with the \texttt{minted} environment).
+        Your version must follow any instructions in the comment above the loop.
+        Unless the loop-comment says otherwise, you may use any method you like to produce the desired behavior.
+        Your version must produce exactly the same result.
+        
+        Also implement your changes in the C file itself, including adding the OMP parallelization compiler directive.
+        \item \underline{The loop CANNOT be parallelized}.
+        In this case, explain WHY the task cannot be parallelized.
+        
+        Don't modify the loop in the C file.
+    \end{itemize}
+\end{itemize}
+You are welcome to run tests to make sure any modifications that you make work correctly.
+Rather than copying and pasting, you can download \texttt{parallelQuiz.c} \href{https://canvas.vt.edu/files/11298897/download?download_frd=1}{here}.
+\newpage
+\begin{minted}{c}
+// parallelQuiz.c
+
+#include <omp.h>
+#include <stdlib.h>
+#include <stdio.h>
+#include <math.h>
+
+// Declare functions that will be defined later
+int collatzIter(int n);
+int collatzTime(int n);
+int alternateSigns();
+
+int main(int argc, char **argv){
+
+  int n, i, j, k;
+  int N = 100;
+
+  int *v = (int*) malloc(N*sizeof(int));
+  int *w = (int*) malloc(N*sizeof(int));
+  float *z = (float*) malloc(N*sizeof(float));
+
+  // Globally set number of threads
+  omp_set_num_threads(4);
+  
+  // Loop A
+  // Fill v with zeros
+  for(n=0;n<N;++n){
+    v[n] = 0;
+  }
+
+  // Loop B
+  // Starting from the end, fill array with values 0,1,2,..,N-1
+  for(n=N-1;n>=0;--n){
+    v[n] = n;
+  }
+
+  // Loop C
+  // Fill v with values 0,3,6,..,3*N-3
+  v[0] = 0;
+  for(n=1;n<N;++n){
+    v[n] = v[n-1]+3;
+  }
+
+  // Loop D
+  // Reverse the entries of v in a single loop
+  for(n=0;n<N/2;++n){ 
+    i = N-1-n;
+    j = v[n];
+    v[n] = v[i];
+    v[i] = j;
+  }
+
+
+  // Loop E
+  // Propagate value from v[0] to all entries of v
+  for(n=1;n<N;++n){
+    v[n] = v[0];
+  }
+
+  // Loop F
+  // Use ONLY alternateSigns() function to fill v with values 1,-1,1,..,-1
+  for(n=0;n<N;++n){
+    v[n] = alternateSigns();
+  }
+
+  // Loop G
+  // Make v[n] the second term in n's Collatz sequence
+  for(n=1;n<N;++n){
+    v[n] = collatzIter(n);
+  }
+
+  // Loop H
+  // Make v[n] the nth term of the Collatz sequence starting with 137
+  v[0] = 137;
+  for(n=1;n<N;++n){
+    v[n] = collatzIter(v[n-1]);
+  }
+
+  // Loop I
+  // Make v[n] the Collatz convergence time of n
+  for(n=0;n<N;++n){
+    v[n] = collatzTime(n);
+  }
+
+  // Loop J
+  // Store v in reverse order in w
+  for(n=0;n<N;++n){
+    i = N-1-n;
+    w[n] = v[i];
+  }
+
+  // Loop K
+  // Record sine of v in z
+  for(n=0;n<N;++n){
+    z[n] = sin(v[n]);
+  }
+  free(v);
+  free(w);
+  free(z);
+}
+
+/*
+DO NOT MODIFY THESE FUNCTIONS
+You should think of them as library functions
+that are outside of your control.
+*/
+
+int collatzIter(int n){
+  // Perform one Collatz iteration
+  if(n%2 == 0)
+    return n/2;
+  return 3*n + 1;
+}
+
+int collatzTime(int n){
+  // Number of iterations to complete Collatz iteration
+  int counter = 0;
+  while(n > 1){
+    n = collatzIter(n);
+    ++counter;
+  }
+  return counter;
+}
+
+int sign = -1;
+int alternateSigns(){
+    // Returns 1, then -1, then 1, etc.
+    sign *= -1;
+    return sign;
+}
+\end{minted}
+
+\begin{tcolorbox}[width=\textwidth,colback=pink]
+You may ONLY modify the for-loops.
+Any modifications should follow the directions in the comment above the loop.
+\end{tcolorbox}
+
+\newpage
+
+\subsubsection*{Task \#2: Parallelize k-means}
+Make a copy of your k-means code from HW 7 into your \texttt{HW09} directory.
+Modify your project in the following ways:
+\begin{itemize}
+    \item[Q2:] (10pts) Parallelize the task of assigning data points to clusters using OpenMP directives.
+    \item[Q3:] (10pts) Parallelize the task of computing cluster centroids  using OpenMP directives.
+    \item[Q4:] (5pts) Use good coding style as explained in the lecture notes and the previous homework instructions.
+    \item[Q5:] (5pts) Use separate directories to sort the several types of files involved in your project, such as \texttt{src} and \texttt{data}.
+    \item[Q6:] (5pts) Provide a makefile called \texttt{makefile} that compiles your program simply by running \texttt{make} from your project root directory, \texttt{HW09}.
+    \item[Q7:] (5pts) Include a screenshot of the terminal \texttt{top} command showing your OpenMP code running and attaining more than 100\% of CPU core utilization.
+\end{itemize}
+
+\subsection*{Submission}
+
+\begin{itemize}
+    \item[Q7:] (5pts) Submit your work as follows.
+    \begin{itemize}
+        \item Write a report on your results and use \LaTeX to typeset it. Your report should include
+        \begin{itemize}
+            \item A section analyzing each of the for-loops in \texttt{parallelQuiz.c}.
+            For each of the loops that you believe must be modified, include the C code of your parellelized version formatted nicely using the \texttt{minted} environment.
+            \item A separate subsection containing your C code from task \#2 formatted nicely using the \texttt{minted} environment.
+        \end{itemize}
+        \item Upload the PDF and tex files of your report to Canvas.
+        \item Submit the C source files of BOTH tasks by pushing them to your Git repository on \href{http://code.vt.edu}{code.vt.edu}
+        You may not receive any credit if your code is not in your repository.
+        \begin{itemize}
+            \item For task \#1, you should push your modified version of \texttt{parallelQuiz.c}.
+            If your report says that a loop can be parallelized, it should have the OMP compiler directive above it
+            \begin{tsession}{mycodebg}
+            \begin{verbatim}
+#pragma omp parallel for\end{verbatim}
+            \end{tsession}
+        \end{itemize}
+    \end{itemize}
+\end{itemize}

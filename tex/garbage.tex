@@ -1,0 +1,58 @@
+
+In the first approach each thread relies on an atomic operations to increment an accumulating variable in DEVICE memory. In the second approach all the threads in a thread-block use their shared memory scratch pad to reduce their section of the array before nominating one thread to use an atomic operation to accumulate their partial result to an accumulating variable in DEVICE memory.
+
+\subsection{CUDA vector reduction with atomic operations}
+
+ Recall that we have to be very careful about the use of shared heap memory when multi-threading with OpenMP. We are obliged to protect writes to heap memory that may incur a read/write race condition between OpenMP threads by using an OpenMP critical region or OpenMP atomic omp pragma directive. In CUDA we can also use atomic operations that are thread safe. In the following kernel we use the atomic CUDA \texttt{atomicAdd} addition function to increment an entry in a global device memory array.
+ 
+\begin{minted}{c}
+__global__ void atomicVectorReductionKernel(int N, float *c_a, float *c_suma){
+
+  int t = threadIdx.x, b = blockIdx.x, B = blockDim.x;
+
+  // map from thread and thread-block indices into linear array index
+  int n = t + b*B;
+
+  // check index is in range
+  if(n<N){
+    float an = c_a[n];
+    atomicAdd(c_suma, an); // uninterruptable addition to accumulator
+  }
+}
+\end{minted}
+
+We need to zero the \texttt{c\_suma} output array entry. The following CUDA HOST code calls the atomic based reduction kernel.
+
+\begin{minted}{c}
+  // 1. allocate HOST array
+  float *h_a    = (float*) calloc(N, sizeof(float));
+  float *h_suma = (float*) calloc(1, sizeof(float));
+  float *c_a, *c_suma;
+
+  // 2. fill HOST array with some values
+  for(int n=0;n<N;++n) 
+    h_a[n] = 1.0;
+
+  // 3. allocate DEVICE array
+  cudaMalloc(&c_a,    N*sizeof(float));
+  cudaMalloc(&c_suma,   sizeof(float));
+
+  // 4. zero accumulator
+  cudaMemset(c_suma, 0, sizeof(float));
+  
+  // 5. copy h_a to c_a
+  cudaMemcpy(c_a, h_a, N*sizeof(float), cudaMemcpyHostToDevice);
+  
+  // 6. launch CUDA DEVICE reduction kernel
+  int B = 256;
+  int G = (N+B-1)/B;
+  atomicVectorReductionKernel <<< G,B >>> (N, c_a, c_suma);
+
+  // 7. copy summed data from DEVICE array to HOST array
+  cudaMemcpy(h_suma, c_suma, sizeof(int), cudaMemcpyDeviceToHost);
+
+  // 8. print result
+  printf("sum(a): %g\n", h_suma[0]);
+\end{minted}
+
+

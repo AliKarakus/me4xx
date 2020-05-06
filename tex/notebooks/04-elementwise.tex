@@ -1,0 +1,140 @@
+
+    
+    \hypertarget{pyopencl-parallel-patterns-mapelementwise}{%
+\subsection{PyOpenCL Parallel Patterns:
+Map/Elementwise}\label{pyopencl-parallel-patterns-mapelementwise}}
+
+    \hypertarget{setup-code}{%
+\subsubsection{Setup code}\label{setup-code}}
+
+    \begin{BGVerbatim}[commandchars=\\\{\}]
+{\color{incolor}In [{\color{incolor}6}]:} \PY{k+kn}{import} \PY{n+nn}{pyopencl} \PY{k}{as} \PY{n+nn}{cl}
+        \PY{k+kn}{import} \PY{n+nn}{pyopencl}\PY{n+nn}{.}\PY{n+nn}{array}
+        \PY{k+kn}{import} \PY{n+nn}{pyopencl}\PY{n+nn}{.}\PY{n+nn}{clrandom}
+        \PY{k+kn}{import} \PY{n+nn}{numpy} \PY{k}{as} \PY{n+nn}{np}
+\end{BGVerbatim}
+
+    \begin{BGVerbatim}[commandchars=\\\{\}]
+{\color{incolor}In [{\color{incolor}16}]:} \PY{n}{ctx} \PY{o}{=} \PY{n}{cl}\PY{o}{.}\PY{n}{create\PYZus{}some\PYZus{}context}\PY{p}{(}\PY{n}{interactive}\PY{o}{=}\PY{k+kc}{True}\PY{p}{)}
+         \PY{n}{queue} \PY{o}{=} \PY{n}{cl}\PY{o}{.}\PY{n}{CommandQueue}\PY{p}{(}\PY{n}{ctx}\PY{p}{)}
+\end{BGVerbatim}
+
+    \begin{BGVerbatim}[commandchars=\\\{\}]
+Choose platform:
+[0] <pyopencl.Platform 'Portable Computing Language' at 0x7f79afb325c0>
+[1] <pyopencl.Platform 'Intel(R) OpenCL' at 0x190f388>
+
+    \end{BGVerbatim}
+
+    \begin{BGVerbatim}[commandchars=\\\{\}]
+Choice [0]: 1
+
+    \end{BGVerbatim}
+
+    \begin{BGVerbatim}[commandchars=\\\{\}]
+Set the environment variable PYOPENCL\_CTX='1' to avoid being asked again.
+
+    \end{BGVerbatim}
+
+    \begin{BGVerbatim}[commandchars=\\\{\}]
+{\color{incolor}In [{\color{incolor}17}]:} \PY{n}{n} \PY{o}{=} \PY{l+m+mi}{10}\PY{o}{*}\PY{o}{*}\PY{l+m+mi}{7}
+         \PY{n}{a} \PY{o}{=} \PY{n}{cl}\PY{o}{.}\PY{n}{clrandom}\PY{o}{.}\PY{n}{rand}\PY{p}{(}\PY{n}{queue}\PY{p}{,} \PY{n}{n}\PY{p}{,} \PY{n}{np}\PY{o}{.}\PY{n}{float32}\PY{p}{)}
+         \PY{n}{b} \PY{o}{=} \PY{n}{cl}\PY{o}{.}\PY{n}{clrandom}\PY{o}{.}\PY{n}{rand}\PY{p}{(}\PY{n}{queue}\PY{p}{,} \PY{n}{n}\PY{p}{,} \PY{n}{np}\PY{o}{.}\PY{n}{float32}\PY{p}{)}
+\end{BGVerbatim}
+
+    \begin{BGVerbatim}[commandchars=\\\{\}]
+/home/andreas/src/pyopencl/pyopencl/\_\_init\_\_.py:250: CompilerWarning: Non-empty compiler output encountered. Set the environment variable PYOPENCL\_COMPILER\_OUTPUT=1 to see more.
+  "to see more.", CompilerWarning)
+
+    \end{BGVerbatim}
+
+    \hypertarget{a-simple-target-application}{%
+\subsubsection{A simple `target
+application'}\label{a-simple-target-application}}
+
+    We would like to evaluate this linear combination:
+
+    \begin{BGVerbatim}[commandchars=\\\{\}]
+{\color{incolor}In [{\color{incolor}18}]:} \PY{n}{c1} \PY{o}{=} \PY{l+m+mi}{5}\PY{o}{*}\PY{n}{a} \PY{o}{+} \PY{l+m+mi}{6}\PY{o}{*}\PY{n}{b}
+\end{BGVerbatim}
+
+    A problem with this is that every single operator (all three of
+them--and easily more for complicated expressions) corresponds to a
+kernel call, which can lead to high overhead. Let's try and avoid that
+by stuffing the entire operation into one kernel, in turn saving lots of
+memory traffic:
+
+    \begin{BGVerbatim}[commandchars=\\\{\}]
+{\color{incolor}In [{\color{incolor}19}]:} \PY{k+kn}{from} \PY{n+nn}{pyopencl}\PY{n+nn}{.}\PY{n+nn}{elementwise} \PY{k}{import} \PY{n}{ElementwiseKernel}
+\end{BGVerbatim}
+
+    Arguments: \texttt{ElementwiseKernel(ctx,\ c\_args,\ operation)}
+
+    \begin{BGVerbatim}[commandchars=\\\{\}]
+{\color{incolor}In [{\color{incolor}20}]:} \PY{n}{lin\PYZus{}comb} \PY{o}{=} \PY{n}{ElementwiseKernel}\PY{p}{(}\PY{n}{ctx}\PY{p}{,}
+                 \PY{l+s+s2}{\PYZdq{}}\PY{l+s+s2}{float a, float *x, float b, float *y, float *c}\PY{l+s+s2}{\PYZdq{}}\PY{p}{,}
+                 \PY{l+s+s2}{\PYZdq{}}\PY{l+s+s2}{c[i] = a*x[i] + b*y[i]}\PY{l+s+s2}{\PYZdq{}}\PY{p}{)}
+\end{BGVerbatim}
+
+    \begin{BGVerbatim}[commandchars=\\\{\}]
+{\color{incolor}In [{\color{incolor}21}]:} \PY{n}{c2} \PY{o}{=} \PY{n}{cl}\PY{o}{.}\PY{n}{array}\PY{o}{.}\PY{n}{empty\PYZus{}like}\PY{p}{(}\PY{n}{a}\PY{p}{)}
+         \PY{n}{lin\PYZus{}comb}\PY{p}{(}\PY{l+m+mi}{5}\PY{p}{,} \PY{n}{a}\PY{p}{,} \PY{l+m+mi}{6}\PY{p}{,} \PY{n}{b}\PY{p}{,} \PY{n}{c2}\PY{p}{)}
+\end{BGVerbatim}
+
+\begin{BGVerbatim}[commandchars=\\\{\}]
+{\color{outcolor}Out[{\color{outcolor}21}]:} <pyopencl.\_cl.Event at 0x7f79a49842f0>
+\end{BGVerbatim}
+            
+    \begin{BGVerbatim}[commandchars=\\\{\}]
+{\color{incolor}In [{\color{incolor}28}]:} \PY{k+kn}{import} \PY{n+nn}{numpy}\PY{n+nn}{.}\PY{n+nn}{linalg} \PY{k}{as} \PY{n+nn}{la}
+         \PY{n+nb}{print}\PY{p}{(}\PY{n}{la}\PY{o}{.}\PY{n}{norm}\PY{p}{(}\PY{n}{c1}\PY{o}{.}\PY{n}{get}\PY{p}{(}\PY{p}{)} \PY{o}{\PYZhy{}} \PY{n}{c2}\PY{o}{.}\PY{n}{get}\PY{p}{(}\PY{p}{)}\PY{p}{,} \PY{n+nb}{ord}\PY{o}{=}\PY{n}{np}\PY{o}{.}\PY{n}{inf}\PY{p}{)}\PY{p}{)}
+\end{BGVerbatim}
+
+    \begin{BGVerbatim}[commandchars=\\\{\}]
+9.536743e-07
+
+    \end{BGVerbatim}
+
+    \hypertarget{timing-elementwisekernel}{%
+\subsubsection{Timing ElementwiseKernel}\label{timing-elementwisekernel}}
+
+Did this optimization pay off?
+
+    \begin{BGVerbatim}[commandchars=\\\{\}]
+{\color{incolor}In [{\color{incolor}29}]:} \PY{k+kn}{from} \PY{n+nn}{time} \PY{k}{import} \PY{n}{time}
+         \PY{n}{queue}\PY{o}{.}\PY{n}{finish}\PY{p}{(}\PY{p}{)}
+         \PY{n}{start\PYZus{}time} \PY{o}{=} \PY{n}{time}\PY{p}{(}\PY{p}{)}
+         
+         \PY{k}{for} \PY{n}{i} \PY{o+ow}{in} \PY{n+nb}{range}\PY{p}{(}\PY{l+m+mi}{10}\PY{p}{)}\PY{p}{:}
+             \PY{n}{c1} \PY{o}{=} \PY{l+m+mi}{5}\PY{o}{*}\PY{n}{a} \PY{o}{+} \PY{l+m+mi}{6}\PY{o}{*}\PY{n}{b}
+             
+         \PY{n}{queue}\PY{o}{.}\PY{n}{finish}\PY{p}{(}\PY{p}{)}
+         \PY{n+nb}{print}\PY{p}{(}\PY{l+s+s2}{\PYZdq{}}\PY{l+s+s2}{elapsed: }\PY{l+s+si}{\PYZob{}0\PYZcb{}}\PY{l+s+s2}{ s}\PY{l+s+s2}{\PYZdq{}}\PY{o}{.}\PY{n}{format}\PY{p}{(}\PY{n}{time}\PY{p}{(}\PY{p}{)}\PY{o}{\PYZhy{}}\PY{n}{start\PYZus{}time}\PY{p}{)}\PY{p}{)}
+\end{BGVerbatim}
+
+    \begin{BGVerbatim}[commandchars=\\\{\}]
+elapsed: 0.4239509105682373 s
+
+    \end{BGVerbatim}
+
+    \begin{BGVerbatim}[commandchars=\\\{\}]
+{\color{incolor}In [{\color{incolor}30}]:} \PY{k+kn}{from} \PY{n+nn}{time} \PY{k}{import} \PY{n}{time}
+         \PY{n}{queue}\PY{o}{.}\PY{n}{finish}\PY{p}{(}\PY{p}{)}
+         \PY{n}{start\PYZus{}time} \PY{o}{=} \PY{n}{time}\PY{p}{(}\PY{p}{)}
+         
+         \PY{k}{for} \PY{n}{i} \PY{o+ow}{in} \PY{n+nb}{range}\PY{p}{(}\PY{l+m+mi}{10}\PY{p}{)}\PY{p}{:}
+             \PY{n}{lin\PYZus{}comb}\PY{p}{(}\PY{l+m+mi}{5}\PY{p}{,} \PY{n}{a}\PY{p}{,} \PY{l+m+mi}{6}\PY{p}{,} \PY{n}{b}\PY{p}{,} \PY{n}{c2}\PY{p}{)}
+             
+         \PY{n}{queue}\PY{o}{.}\PY{n}{finish}\PY{p}{(}\PY{p}{)}
+         \PY{n+nb}{print}\PY{p}{(}\PY{l+s+s2}{\PYZdq{}}\PY{l+s+s2}{elapsed: }\PY{l+s+si}{\PYZob{}0\PYZcb{}}\PY{l+s+s2}{ s}\PY{l+s+s2}{\PYZdq{}}\PY{o}{.}\PY{n}{format}\PY{p}{(}\PY{n}{time}\PY{p}{(}\PY{p}{)}\PY{o}{\PYZhy{}}\PY{n}{start\PYZus{}time}\PY{p}{)}\PY{p}{)}
+\end{BGVerbatim}
+
+    \begin{BGVerbatim}[commandchars=\\\{\}]
+elapsed: 0.06237149238586426 s
+
+    \end{BGVerbatim}
+
+    \begin{BGVerbatim}[commandchars=\\\{\}]
+{\color{incolor}In [{\color{incolor} }]:} 
+\end{BGVerbatim}
+

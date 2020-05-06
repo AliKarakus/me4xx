@@ -1,0 +1,184 @@
+\documentclass{book}[11pt]
+%\documentclass[notoc]{tufte-book} 
+\usepackage{caption}
+\usepackage{subcaption}
+%% -------------------------------------------
+%% PREAMBLE STARTS HERE 
+\input preamble
+\input notebookPreamble
+
+%% document title
+\title{Computational Science Foundations for \\Mechanical Engineers\\ ME 4XX \\ \vspace{16pt}Lecture Notes \\ Spring 2020}
+
+%% PREAMBLE ENDS HERE
+%% -------------------------------------------
+
+\begin{document}
+\setlength{\parindent}{0cm}
+
+\maketitle
+
+\copyrightPage
+
+\mytoc
+
+\section*{Foreword}
+\input tex/me4xxForeword
+
+\newpage
+\section*{About this course}
+\input tex/me4xxPrologue
+
+
+\newpage
+\section*{Lecture plan}
+\input tex/me4xxLecturePlan
+
+\part{Intro. computational science skills}
+
+\chapter{Setting up an Ubuntu Linux VirtualBox}
+%\renewcommand\thesection{\thechapter.\arabic{section}}
+\label{linux.chap}
+\adjustmtc[0]
+\input tex/me4xxL01
+
+\chapter{Linux Command Terminal}
+\label{terminal.chap}
+\input tex/me4xxL02
+
+\chapter{Setting up a Git repository}
+\label{git.chap}
+\input tex/me4xxL03
+
+\chapter{Source code control using Git}
+\label{gitSource.chap}
+\input tex/me4xxL04
+
+% \chapter{Typesetting technical documents with \LaTeX{}}
+% \label{latex.chap}
+% \input tex/me4xxL05
+
+% \chapter{C programming: hello world, syntax, and variables}
+% \label{Cintro.chap}
+% \input tex/me4xxL06
+
+% \chapter{C programming: flow control, functions, scope, structs}
+% \label{Cflow.chap}
+% \input tex/me4xxL07
+
+% \chapter{C programming: memory}
+% \label{Cmemory.chap}
+% \input tex/me4xxL08
+
+%% TW: make
+
+% \chapter{C programming: file input-output}
+% \label{Cio.chap}
+% \input tex/me4xxL09
+
+% \chapter{Debugging: using \texttt{gdb} and \texttt{valgrind}}
+% \label{debug.chap}
+% \input tex/me4xxL10
+
+% \part{Parallel computing}
+
+% \chapter{High Performance Computing: overview and concepts}
+% %\renewcommand\thesection{\thechapter.\arabic{section}}
+% \label{HPCIntro.chap}
+% \input tex/me4xxL13
+
+% \chapter{Parallel programming with Open Multi-Processing}
+% \label{OpenMPIntro.chap}
+% \input tex/me4xxL14
+
+% \chapter{OpenMP Part II}
+% \label{OpenMPadvanced.chap}
+% \input tex/me4xxL15
+
+% \chapter{Parallel programming with the Message Passing Interface}
+% \label{MPIIntro.chap}
+% \input tex/me4xxL16
+
+% \chapter{Visualizing MPI program execution with the Message Passing Environment (MPE) and Jumpshot}
+% \label{MPIViz.chap}
+% \input tex/me4xxL17
+
+% \chapter{Using the VT Advanced Research Computing services}
+% \label{ARC.chap}
+% \input tex/me4xxL18
+
+% \chapter{MPI: collective communications}
+% \label{MPICollectives.chap}
+% \input tex/me4xxL19
+
+% \chapter{MPI: performance models, analysis, and scalability}
+% \label{MPIPerformance.chap}
+% \input tex/me4xxL20
+
+% \chapter{Algorithms for fast queries of scattered data}
+% \label{quadtree.chap}
+% \input tex/me4xxL21
+
+% \chapter{Using parallel R}
+% \label{ParallelR.chap}
+% \input tex/me4xxL22
+
+% \chapter{Code profiling and optimization}
+% \label{performance.chap}
+% \input tex/me4xxL23
+
+% \chapter{WIP Why GPUs ?}
+% \label{whyGPUs.chap}
+% \input tex/me4xxL24
+
+% \chapter{CUDA introduction: hello world}
+% \label{CUDAhelloWorld.chap}
+% \input tex/me4xxL25
+
+% \chapter{CUDA part 2: GPU sum reduction}
+% \label{CUDAreductions.chap}
+% \input tex/me4xxL26
+
+% \chapter{Portable GPU computing: AMD HIP and OpenCL}
+% \label{advancedGPU.chap}
+% \input tex/me4xxL27
+
+% \part{High performance computing with Python}
+
+% \chapter{Python: Introduction}
+% \label{PythonIntro.chap}
+% \input tex/me4xxL11
+
+% \chapter{Python: Visualizing K-means}
+% \label{PythonViz.chap}
+% \input tex/me4xxL12
+
+% \chapter{Python: Improving Python performance with Cython }
+% \label{pythonCython.chap}
+
+% \chapter{Python: Heterogeneous computing with PyCUDA \& PyOpenCL }
+% \label{pythonGPU.chap}
+% \input tex/me4xxL28
+
+% \part{Assignments}
+% \chapter{Assignments from Fall 2019}
+% \label{assignments2019.chap}
+% \input tex/me4xxAssignments
+
+% \part{Algorithms}
+
+% \chapter{Fall 2019: exploring finite precision by recurrence}
+% \label{finitePrecision.chap}
+% \input tex/me4xxFinitePrecision
+
+
+% \chapter{Fall 2019: clustering data with the k-means algorithm}
+% \label{Kmeans.chap}
+% \input tex/me4xxKmeans
+
+% \part{Appendix}
+
+% \chapter{CMDA 3634 style guide}
+% \input tex/me4xxStyleGuide
+
+\end{document}

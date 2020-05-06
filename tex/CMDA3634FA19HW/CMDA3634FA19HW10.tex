@@ -1,0 +1,121 @@
+
+\subsection*{Pledged assignment}
+
+This assignment is ``pledged.''
+You can talk to anyone about tools of the class (gcc, Git, MPI, etc.), but only to help you understand concepts.
+You can study generic examples of MPI code to understand how MPI works,
+but you are not allowed to share or look for MPI code that solves the particular problems of this assignment.
+\textcolor{red}{All of the code you submit must be your own work or taken from example code provided by instructors.}
+In particular, you are not to copy code from other students or the Internet.
+You can get extra help from the course instructors and the CMDA computing consultants (\href{https://www.ais.science.vt.edu/cmda/our-program/cmdacomputingconsultants.html}{information here}).
+
+\vspace{8pt}\noindent At the top of your assignment, you will write
+\begin{center}
+``I have neither given nor received unauthorized assistance on this assignment.''
+\end{center}
+
+\subsection*{Assignment overview}
+
+\noindent You have two tasks in this assignment.
+
+\vspace{8pt}\noindent {\bf Task \#1}: Fix and improve the code in \texttt{mpiDebug.c}.
+\\
+\vspace{4pt}\noindent {\bf Task \#2}: Use code parallelized with MPI to find the centroids of the clusters described in a file.
+\vspace{8pt}\hrule 
+
+\subsection*{Task \#1: Parallel Debugging}
+
+The code in \texttt{mpiDebug.c} (\href{https://canvas.vt.edu/files/11482160/download?download_frd=1}{download here}) attempts to read \texttt{mpiClusters.dat} and find the maximum and minimum x-coordinates in parallel using MPI.
+\begin{itemize}
+     \item[Q1.1] (10pts) Debug the code and include a corrected version in your report and Git repository.
+    \item[Q1.2] (5pts) Make the code more efficient by letting rank 0 begin its calculation of the minimum without waiting until rank 1 has received the data.
+\end{itemize}
+\begin{tcolorbox}[width=\textwidth,colback=green]
+Task \#1 is a parallel debugging exercise.
+The code in \texttt{mpiDebug.c} has nothing to do with k-means or clustering.
+The code reads from the cluster data file \texttt{mpiClusters.dat} for convenience only.
+Don't try to change the purpose of \texttt{mpiDebug.c}.
+It is for finding a maximum and a minimum, not for clustering or finding centroids.
+\end{tcolorbox}
+\subsection*{Task \#2: Parallel centroid calculation}
+\subsubsection*{Test file format}
+This assignment uses a data file format like those that have been used in earlier assignments.
+The format of your input files will be as follows
+\begin{itemize}
+    \item Line 1: A header that your program should ignore.
+    \item Line 2: A number telling you the total number of lines of data in the file.
+    \item Line 3: A header that your program should ignore.
+    \item All other lines: Space-separated numbers giving, in order, the x and y coordinates of data points (floating point values) and a cluster numbers (integers).
+\end{itemize}
+For example, the file contents might be
+\begin{tsession}{mycodebg}
+\begin{verbatim}
+<Number of lines of data>
+12
+<Data>
+0.978357560 -0.78691991 0
+-0.38803385 -0.09377587 2
+-0.60679914 0.158120691 1
+-0.27996106 0.844734722 1
+0.181741410 1.176679913 0
+-0.18679137 0.474455854 0
+1.550371030 0.219166765 0
+-0.13938078 1.562948096 0
+-1.02885595 0.051917867 2
+-0.69919482 0.650696358 2
+-0.63400276 -0.15668462 1
+1.774652670 -0.26363615 1
+\end{verbatim}
+\end{tsession}
+\subsubsection*{Your task}
+Write a program in C that does the following
+\begin{itemize}
+    \item[Q2.1] (5pts) Takes a filename as a command line argument and reads the file's contents you may assume the file has the format above.
+    Your program should use the values in the third column to determine the number of clusters.
+    
+    You should be smart about reading the file. Every process should not have to read all of the data and each process should only own (i.e. store) approximately $N/P$ data points where $N$ is the total number of data points and $P$ is the number of processes.
+    
+    \item[Q2.2] (20pts) For each cluster, compute the local contribution to the centroid calculation from the datapoints owned by the process.
+    Then use \texttt{MPI\_Allreduce} to finalize the addition of the cluster centroids and to determine the number of datapoints in each cluster.
+    
+    Finally, all the processes use the information distributed by calls to \texttt{MPI\_Allreduce} to complete the calculation of the cluster centroids.
+    All processes should do about the same amount of work.
+    
+    \item[Q2.3] (5pts) Nominate a single process to print the space-separated centroid data to standard output in the order of the cluster numbers ($0,1,\dots$).
+    With the example file above, your program should print the following
+    \begin{tsession}{mycodebg}
+    \begin{verbatim}
+0.47685957 0.52926614
+0.06347243 0.14563366
+-0.7053615 0.20294611\end{verbatim}
+    \end{tsession}
+\end{itemize}
+You may download the large test file \texttt{mpiClusters.dat} \href{https://canvas.vt.edu/files/11482183/download?download_frd=1}{here}.
+I do not need 50 copies of this file, so \textcolor{red}{DO NOT} \texttt{push} this data file to your Git repository.
+We will run tests using our own data files.
+\subsubsection*{Testing}
+\begin{itemize}
+    \item[Q2.4] (5pts) Run your program with \texttt{mpiClusters.dat} as input.
+    Copy the printed result into your report in an equal-width environment like \texttt{verbatim}.
+\end{itemize}
+
+\subsection*{Submission}
+
+\begin{itemize}
+    \item[Q3.1] (5pts) Submit your work as follows.
+    \begin{itemize}
+        \item Write a report on your results and use \LaTeX{} to typeset it.
+        \begin{itemize}
+            \item  Your report should include
+            \begin{itemize}
+                \item Your improved version of \texttt{mpiDebug.c} from task \#1, formatted nicely using the \texttt{minted} environment.
+                \item Your C code from task \#2, formatted nicely using the \texttt{minted} environment.
+                \item The centroids of the clusters in \texttt{mpiClusters.dat}.
+                \item A screenshot of a \texttt{top} readout displaying more than 100\% CPU usage for your program.
+            \end{itemize}
+            \item Upload the PDF and tex files of your report to Canvas.
+        \end{itemize}
+        \item Submit the C source files of BOTH tasks by pushing them to your Git repository on \href{http://code.vt.edu}{code.vt.edu}
+        You may not receive any credit if your code is not in your repository.
+    \end{itemize}
+\end{itemize}

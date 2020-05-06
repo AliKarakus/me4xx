@@ -1,0 +1,208 @@
+
+
+\section{Assignment HW05: testing finite precision}
+In this assignment you will investigate a basic difference between the real numbers ($\mathbb R$) and floating-point numbers by considering the sequence of numbers described by
+    \begin{align}
+        a_0&=\frac13,\\
+        a_{n+1}&=4a_n-1. \label{recur.eqn}
+    \end{align}
+    
+\begin{enumerate}
+    \item[Q1:] (5pts) What is $a_{50}$ in exact arithmetic? Can you write down what $a_n$ is for all $n$ if the recurrence is evaluated with exact arithmetic?
+    \item[Q2:] (10pts) Now consider the sequence of numbers $\{a_n\}$ that are obtained when using finite precision floating point arithmetic.
+    
+    Write a C program that uses single precision \texttt{float} variables to evaluate the Equation \ref{recur.eqn} to obtain $a_0,\dots,a_{50}$ and print this sequence of numbers to the terminal to 15 significant digits.
+   
+    \item[Q3:] (5pts) Create a new implementation of Q2 that uses double precision \texttt{double} type variables. 
+    \item[Q4:] (5pts) Explain why $a_{50}$ found in Q2 and Q3 is so different from your answer in Q1.
+    Use what you know about how computers store floating point variables.
+\end{enumerate}
+
+\subsection*{Submission}
+\begin{itemize}
+    \item[Q5:] (5pts) Include the following in your \LaTeX{} typeset report:
+    \begin{enumerate}
+        \item Your C code formatted using the \texttt{minted} environment.
+        \item Your responses to the above questions. 
+        \item The output of your computer programs, nicely formatted.
+    \end{enumerate}
+ 
+    Submit your assignment as follows:
+    \begin{itemize}
+    \item Upload your PDF and tex files to Canvas.
+    \item Submit the C source files from Q2 an Q3 by pushing them to your git repository on \href{code.vt.edu}{code.vt.edu}.
+    \end{itemize}
+\end{itemize}
+
+
+
+\section{Discussion on assignment HW05}
+
+In this assignment you were prompted to investigate a basic difference between the real numbers ($\mathbb R$) and floating-point numbers by considering the sequence of numbers described by
+    \begin{align}
+        a_0&=\frac13,\\
+        a_{n+1}&=4a_n-1. \label{recur.eqn}
+    \end{align}
+    
+In exact arithmetic we can observe that if $a_n=\frac13$, then $a_{n+1}=4a_n-1=4\frac13-1 = \frac13$. Thus given that $a_0=\frac13$ and by induction we deduce $a_n=\frac13$.
+
+\vspace{8pt}\noindent {\bf Perturbation analysis}: We now consider what happens if the initial condition is perturbed away from $1/3$ by an amount $\delta$ as follows
+\[
+a_0 = \frac13 + \delta,  
+\]
+and we further assume that all arithmetic operations are exact. In this case
+\[
+a_1 = 4a_0 - 1 = 4\frac13-1 + 4\delta = \frac13 + 4\delta,
+\]
+and by induction
+\[
+a_n = \frac13 + 4^n\delta.
+\]
+Thus even in the scenario where all arithmetic is performed exactly we would observe that the iterations will diverge ``exponentially''\footnote{And yes this is the correct usage of exponentially} fast away from $\frac13$.
+
+\vspace{8pt}\noindent {\bf Initial perturbation analysis}: When the compiler converts $\frac13$ to a finite precision floating point representation it actually encodes an approximation of $\frac13$. We carefully chose this initial value and recurrence relationship because we can estimate $\delta$ precisely.
+
+Starting with this observation we can estimate $\delta$ for a 32 bit floating point representation
+\[
+\frac13 = \frac{1}{4} \frac{1}{3/4} = \frac14 \frac{1}{(1 - 1/4)} = \frac14 \sum_{n=0}^{n=\infty} \frac{1}{4^n} = \frac14 \left( 1 + \frac14 + \frac{1}{4^2} + \frac{1}{4^3} + \frac{1}{4^4} + \frac{1}{4^5} \ldots + \frac{1}{4^{11}} + {\color{red}\frac{1}{4^{12}}} + \ldots \right). 
+\]
+Rewriting that last expression as powers of 2 
+\[
+\frac13 = \frac{1}{2^2} \left( 1 + \frac{1}{2^2}+ \frac{1}{2^4} + \frac{1}{2^6} + \frac{1}{2^8} + \frac{1}{2^{10}} \ldots + \frac{1}{2^{22}} + {\color{red}\frac{1}{2^{24}}} + \ldots \right). 
+\]
+The 32 bit IEEE 754 floating point encoding of $1/3$ includes all terms up to but not including the term in red as follows
+\[
+\mbox{fp}_{32}\left(\frac13\right) := \frac{1}{2^2} \left( 1 + \frac{0}{2^1} +  \frac{1}{2^2}+ \frac{0}{2^3} +\frac{1}{2^4} +\frac{0}{2^5} + \frac{1}{2^6} + \frac{0}{2^7} +\frac{1}{2^8} +\frac{0}{2^9} + \frac{1}{2^{10}} \ldots + \frac{1}{2^{22}} + \frac{0}{2^{23}} \right). 
+\]
+To leading order
+\[
+\delta = \mbox{fp}_{32} - \frac13 \approx {\color{red}-\frac{1}{2^{24}}}.
+\]
+However note that depending on the rounding mode the compiler might choose to instead round up with the following encoding 
+\[
+\mbox{fp}_{32}\left(\frac13\right) := \frac{1}{2^2} \left( 1 + \frac{0}{2^1} +  \frac{1}{2^2}+ \frac{0}{2^3} +\frac{1}{2^4} +\frac{0}{2^5} + \frac{1}{2^6} + \frac{0}{2^7} +\frac{1}{2^8} +\frac{0}{2^9} + \frac{1}{2^{10}} \ldots + \frac{1}{2^{22}} + {\color{blue}\frac{1}{2^{23}}} \right),
+\]
+in which case to leading order
+\[
+\delta = \mbox{fp}_{32} - \frac13 \approx {\color{blue}\frac{1}{2^{23}}-\color{red}\frac{1}{2^{24}}} \approx {\color{purple}\frac{1}{2^{24}}}.
+\]
+{\bf Note}: we could actually estimate $\delta$ more precisely, but either of the above estimate is a reasonable start.
+
+If our assumptions that the dominant error in computing this recurrence are true then we can expect  either
+\[
+a_n \approx \frac13  - 4^n \frac{1}{2^{24}} 
+\]
+or
+\[
+a_n \approx \frac13  + 4^n \frac{1}{2^{24}}. 
+\]
+
+\vspace{8pt}\noindent{\bf Computational experiments (32-bit)}: we implement the test in \texttt{C} as follows
+
+\begin{minted}{c}
+#include <stdio.h>
+
+int main(int argc, char **argv){
+
+  float a = 1./3;
+
+  int n;
+  printf("\\begin{eqnarray*}\n");
+  for(n=0;n<50;++n){
+    a = 4*a - 1;
+    printf("a_{%d} &=& %.15e, \\\\ \n", n, a);
+  }
+  printf("\\end{eqnarray*}\n");
+  return 0;
+}
+\end{minted}
+
+\noindent{\bf Note \#1}: we have actually formatted the output using the \LaTeX{} \texttt{eqnarray} environment so that it can be directly pasted into this document.
+
+\noindent{\bf Note \#2}: if you want to print the backslash symbol using \texttt{printf} then you need to proceed it with an addition backslash.
+
+The results of running this code are as follows
+\small
+\begin{eqnarray*}
+a_{1} &=& 3.333333730697632e-01, \\ 
+a_{2} &=& 3.333334922790527e-01, \\ 
+a_{3} &=& 3.333339691162109e-01, \\ 
+a_{4} &=& 3.333358764648438e-01, \\ 
+a_{5} &=& 3.333435058593750e-01, \\ 
+a_{6} &=& 3.333740234375000e-01, \\ 
+a_{7} &=& 3.334960937500000e-01, \\ 
+a_{8} &=& 3.339843750000000e-01, \\ 
+a_{9} &=& 3.359375000000000e-01, \\ 
+ & \vdots & \\
+a_{40} &=& 1.200959936423526e+16, \\ 
+a_{41} &=& 4.803839745694106e+16, \\ 
+a_{42} &=& 1.921535898277642e+17, \\ 
+a_{43} &=& 7.686143593110569e+17, \\ 
+a_{44} &=& 3.074457437244228e+18, \\ 
+a_{45} &=& 1.229782974897691e+19, \\ 
+a_{46} &=& 4.919131899590764e+19, \\ 
+a_{47} &=& 1.967652759836306e+20, \\ 
+a_{48} &=& 7.870611039345223e+20, \\ 
+a_{49} &=& 3.148244415738089e+21, \\ 
+a_{50} &=& 1.259297766295236e+22.
+\end{eqnarray*}
+\normalsize
+Immediately we discern that $\frac13$ was rounded up when encoded in the IEEE 754 32 bit floating point representation.
+
+\vspace{8pt}\noindent{\bf Computational experiments (64-bit)}: we implement the test in \texttt{C} as follows
+
+\begin{minted}{c}
+#include <stdio.h>
+
+int main(int argc, char **argv){
+
+  double a = 1./3;
+
+  int n;
+  printf("\\begin{eqnarray*}\n");
+  for(n=0;n<50;++n){
+    a = 4*a - 1;
+    printf("a_{%d} &=& %.15e, \\\\ \n", n, a);
+  }
+  printf("\\end{eqnarray*}\n");
+  return 0;
+}
+\end{minted}
+
+\noindent{\bf Note \#1}: we only had to change the type of variable \texttt{a}.
+
+\vspace{8pt}\noindent The results of running this code are as follows
+\small
+\begin{eqnarray*}
+a_{1} &=& 3.333333333333333e-01, \\ 
+a_{2} &=& 3.333333333333330e-01, \\ 
+a_{3} &=& 3.333333333333321e-01, \\ 
+a_{4} &=& 3.333333333333286e-01, \\ 
+a_{5} &=& 3.333333333333144e-01, \\ 
+a_{6} &=& 3.333333333332575e-01, \\ 
+a_{7} &=& 3.333333333330302e-01, \\ 
+a_{8} &=& 3.333333333321207e-01, \\ 
+a_{9} &=& 3.333333333284827e-01, \\ 
+a_{10} &=& 3.333333333139308e-01, \\ 
+ & \vdots & \\
+a_{40} &=& -2.236962100000000e+07, \\ 
+a_{41} &=& -8.947848500000000e+07, \\ 
+a_{42} &=& -3.579139410000000e+08, \\ 
+a_{43} &=& -1.431655765000000e+09, \\ 
+a_{44} &=& -5.726623061000000e+09, \\ 
+a_{45} &=& -2.290649224500000e+10, \\ 
+a_{46} &=& -9.162596898100000e+10, \\ 
+a_{47} &=& -3.665038759250000e+11, \\ 
+a_{48} &=& -1.466015503701000e+12, \\ 
+a_{49} &=& -5.864062014805000e+12, \\ 
+a_{50} &=& -2.345624805922100e+13.
+\end{eqnarray*}
+\normalsize
+Using the same analysis as before, but this time accounting for a 53 bit mantissa in the 64-bit IEEE 754 floating point standard we estimate that encoding of $\frac13$ rounds down and the initial approximation error for $a_0$ is
+\[
+\delta = \mbox{fp}_{64} - \frac13 \approx {\color{blue}-\frac{1}{2^{54}}},
+\]
+and that the iterates grow as
+\[
+a_n \approx \frac13  - 4^n \frac{1}{2^{54}} .
+\]

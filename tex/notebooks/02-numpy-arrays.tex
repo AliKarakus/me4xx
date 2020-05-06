@@ -1,0 +1,166 @@
+
+    \hypertarget{how-are-numpy-arrays-stored}{%
+\subsection{How are numpy arrays
+stored?}\label{how-are-numpy-arrays-stored}}
+
+    \begin{BGVerbatim}[commandchars=\\\{\}]
+{\color{incolor}In [{\color{incolor}1}]:} \PY{k+kn}{import} \PY{n+nn}{numpy} \PY{k}{as} \PY{n+nn}{np}
+\end{BGVerbatim}
+
+    Numpy presents an n-dimensional abstraction that has to be fit into
+1-dimensional computer memory.
+
+Even for 2 dimensions (matrices), this leads to confusion: row-major,
+column-major.
+
+    \begin{BGVerbatim}[commandchars=\\\{\}]
+{\color{incolor}In [{\color{incolor}2}]:} \PY{n}{A} \PY{o}{=} \PY{n}{np}\PY{o}{.}\PY{n}{arange}\PY{p}{(}\PY{l+m+mi}{9}\PY{p}{)}\PY{o}{.}\PY{n}{reshape}\PY{p}{(}\PY{l+m+mi}{3}\PY{p}{,} \PY{l+m+mi}{3}\PY{p}{)}
+        \PY{n+nb}{print}\PY{p}{(}\PY{n}{A}\PY{p}{)}
+\end{BGVerbatim}
+
+    \begin{BGVerbatim}[commandchars=\\\{\}]
+[[0 1 2]
+ [3 4 5]
+ [6 7 8]]
+
+    \end{BGVerbatim}
+
+    \hypertarget{strides-and-in-memory-representation}{%
+\subsubsection{Strides and in-memory
+representation}\label{strides-and-in-memory-representation}}
+
+    How is this represented in memory?
+
+    \begin{BGVerbatim}[commandchars=\\\{\}]
+{\color{incolor}In [{\color{incolor}3}]:} \PY{n}{A}\PY{o}{.}\PY{n}{strides}
+\end{BGVerbatim}
+
+\begin{BGVerbatim}[commandchars=\\\{\}]
+{\color{outcolor}Out[{\color{outcolor}3}]:} (24, 8)
+\end{BGVerbatim}
+            
+    \begin{itemize}
+\tightlist
+\item
+  \texttt{strides} stores for each axis by how many bytes one needs to
+  jump to get from one entry to the next (in that axis)
+\item
+  So how is the array above stored?
+\item
+  This captures row-major (``C'' order) and column-major (``Fortran''
+  order), but is actually much more general.
+\end{itemize}
+
+    \begin{BGVerbatim}[commandchars=\\\{\}]
+{\color{incolor}In [{\color{incolor}10}]:} \PY{n+nb}{bytes}\PY{p}{(}\PY{n}{A}\PY{o}{.}\PY{n}{astype}\PY{p}{(}\PY{n}{np}\PY{o}{.}\PY{n}{uint8}\PY{p}{)}\PY{p}{)}
+\end{BGVerbatim}
+
+\begin{BGVerbatim}[commandchars=\\\{\}]
+{\color{outcolor}Out[{\color{outcolor}10}]:} b'\textbackslash{}x00\textbackslash{}x01\textbackslash{}x02\textbackslash{}x03\textbackslash{}x04\textbackslash{}x05\textbackslash{}x06\textbackslash{}x07\textbackslash{}x08'
+\end{BGVerbatim}
+            
+    We can also ask for Fortran order:
+
+    \begin{BGVerbatim}[commandchars=\\\{\}]
+{\color{incolor}In [{\color{incolor}11}]:} \PY{n}{A2} \PY{o}{=} \PY{n}{np}\PY{o}{.}\PY{n}{arange}\PY{p}{(}\PY{l+m+mi}{9}\PY{p}{)}\PY{o}{.}\PY{n}{reshape}\PY{p}{(}\PY{l+m+mi}{3}\PY{p}{,} \PY{l+m+mi}{3}\PY{p}{,} \PY{n}{order}\PY{o}{=}\PY{l+s+s2}{\PYZdq{}}\PY{l+s+s2}{F}\PY{l+s+s2}{\PYZdq{}}\PY{p}{)}
+         \PY{n}{A2}
+\end{BGVerbatim}
+
+\begin{BGVerbatim}[commandchars=\\\{\}]
+{\color{outcolor}Out[{\color{outcolor}11}]:} array([[0, 3, 6],
+                [1, 4, 7],
+                [2, 5, 8]])
+\end{BGVerbatim}
+            
+    \texttt{numpy} defaults to row-major order.
+
+    \begin{BGVerbatim}[commandchars=\\\{\}]
+{\color{incolor}In [{\color{incolor}12}]:} \PY{n}{A2}\PY{o}{.}\PY{n}{strides}
+\end{BGVerbatim}
+
+\begin{BGVerbatim}[commandchars=\\\{\}]
+{\color{outcolor}Out[{\color{outcolor}12}]:} (8, 24)
+\end{BGVerbatim}
+            
+    \begin{BGVerbatim}[commandchars=\\\{\}]
+{\color{incolor}In [{\color{incolor}13}]:} \PY{n+nb}{bytes}\PY{p}{(}\PY{n}{A2}\PY{o}{.}\PY{n}{astype}\PY{p}{(}\PY{n}{np}\PY{o}{.}\PY{n}{uint8}\PY{p}{)}\PY{p}{)}
+\end{BGVerbatim}
+
+\begin{BGVerbatim}[commandchars=\\\{\}]
+{\color{outcolor}Out[{\color{outcolor}13}]:} b'\textbackslash{}x00\textbackslash{}x03\textbackslash{}x06\textbackslash{}x01\textbackslash{}x04\textbackslash{}x07\textbackslash{}x02\textbackslash{}x05\textbackslash{}x08'
+\end{BGVerbatim}
+            
+    \hypertarget{strides-and-contiguity}{%
+\subsubsection{Strides and Contiguity}\label{strides-and-contiguity}}
+
+    How is the stride model more general than just saying ``row major'' or
+``column major''?
+
+    \begin{BGVerbatim}[commandchars=\\\{\}]
+{\color{incolor}In [{\color{incolor}14}]:} \PY{n}{A} \PY{o}{=} \PY{n}{np}\PY{o}{.}\PY{n}{arange}\PY{p}{(}\PY{l+m+mi}{16}\PY{p}{)}\PY{o}{.}\PY{n}{reshape}\PY{p}{(}\PY{l+m+mi}{4}\PY{p}{,} \PY{l+m+mi}{4}\PY{p}{)}
+         \PY{n}{A}
+\end{BGVerbatim}
+
+\begin{BGVerbatim}[commandchars=\\\{\}]
+{\color{outcolor}Out[{\color{outcolor}14}]:} array([[ 0,  1,  2,  3],
+                [ 4,  5,  6,  7],
+                [ 8,  9, 10, 11],
+                [12, 13, 14, 15]])
+\end{BGVerbatim}
+            
+    \begin{BGVerbatim}[commandchars=\\\{\}]
+{\color{incolor}In [{\color{incolor}15}]:} \PY{n}{A}\PY{o}{.}\PY{n}{strides}
+\end{BGVerbatim}
+
+\begin{BGVerbatim}[commandchars=\\\{\}]
+{\color{outcolor}Out[{\color{outcolor}15}]:} (32, 8)
+\end{BGVerbatim}
+            
+    \begin{BGVerbatim}[commandchars=\\\{\}]
+{\color{incolor}In [{\color{incolor}16}]:} \PY{n}{Asub} \PY{o}{=} \PY{n}{A}\PY{p}{[}\PY{p}{:}\PY{l+m+mi}{3}\PY{p}{,} \PY{p}{:}\PY{l+m+mi}{3}\PY{p}{]}
+         \PY{n}{Asub}
+\end{BGVerbatim}
+
+\begin{BGVerbatim}[commandchars=\\\{\}]
+{\color{outcolor}Out[{\color{outcolor}16}]:} array([[ 0,  1,  2],
+                [ 4,  5,  6],
+                [ 8,  9, 10]])
+\end{BGVerbatim}
+            
+    Recall that \texttt{Asub} constitutes a \emph{view} of the original data
+in \texttt{A}.
+
+    \begin{BGVerbatim}[commandchars=\\\{\}]
+{\color{incolor}In [{\color{incolor}17}]:} \PY{n}{Asub}\PY{o}{.}\PY{n}{strides}
+\end{BGVerbatim}
+
+\begin{BGVerbatim}[commandchars=\\\{\}]
+{\color{outcolor}Out[{\color{outcolor}17}]:} (32, 8)
+\end{BGVerbatim}
+            
+    Now \texttt{Asub} is no longer a \emph{contiguous} array!
+
+From the linear-memory representation (as show by the increasing numbers
+in \texttt{A}) 3, 7, 11 are missing.
+
+This is easy to check by a flag:
+
+    \begin{BGVerbatim}[commandchars=\\\{\}]
+{\color{incolor}In [{\color{incolor}18}]:} \PY{n}{Asub}\PY{o}{.}\PY{n}{flags}
+\end{BGVerbatim}
+
+\begin{BGVerbatim}[commandchars=\\\{\}]
+{\color{outcolor}Out[{\color{outcolor}18}]:}   C\_CONTIGUOUS : False
+           F\_CONTIGUOUS : False
+           OWNDATA : False
+           WRITEABLE : True
+           ALIGNED : True
+           WRITEBACKIFCOPY : False
+           UPDATEIFCOPY : False
+\end{BGVerbatim}
+            
+    \begin{BGVerbatim}[commandchars=\\\{\}]
+{\color{incolor}In [{\color{incolor} }]:} 
+\end{BGVerbatim}
+
+

@@ -1,0 +1,546 @@
+%https://www.olcf.ornl.gov/wp-content/uploads/2019/09/AMD_GPU_HIP_training_20190906.pdf
+
+%\printbibliography[heading=subbibliography]
+
+\epigraph{Two languages implementing the same idea must, on pain of death, use different terms}{Feldman's Law of Programming Terminology}
+
+Over the last decade a trend has emerged in programming CPUs and GPUs. The major chip manufacturers have each launched preferred programming models for their own hardware. 
+
+\begin{itemize}
+    \item NVIDIA: recommends CUDA, OpenACC, and OpenMP 5.0 for programming their GPUs.
+    \item AMD: recommends HIP/ROCM for programming their GPUs. 
+    \item Intel: recommends OpenMP for their CPUs and their new \href{https://software.intel.com/en-us/oneapi}{OneAPI ecosystem} including Data Parallel C++ for programming their CPUs and upcoming GPUs.
+\end{itemize} 
+
+In this lecture we describe the AMD HIP tools for programming AMD and NVIDIA GPUs. We then introduce the more portable Open Computing Language (OpenCL) that enables us to write code that can execute on CPUs and GPUs from all major chip manufacturers.
+
+\section{The AMD heterogeneous-compute interface for portability (AMD HIP)}
+
+So far in this course we have only introduced NVIDIA's CUDA for GPU programming. This currently limits us to programming NVIDIA's GPUs and excludes the GPUs from Intel and AMD. In this section we provide a brief how-to guide on transitioning between NVIDIA's CUDA programming model and AMD's HIP programming model. Fortunately the languages are almost identical in many important regards. 
+
+For an AMD HIP programming guide see \href{https://rocm-documentation.readthedocs.io/en/latest/Programming_Guides/HIP-GUIDE.html}{here} and this presentation \href{https://www.olcf.ornl.gov/wp-content/uploads/2019/09/AMD_GPU_HIP_training_20190906.pdf}{here}.
+
+\subsection{Translating CUDA kernels to AMD HIP}
+
+{\bf Good news}: almost all of the CUDA kernel syntax carries over to the AMD HIP kernel syntax. The following CUDA keywords and functions all work in HIP kernels: \texttt{\_\_syncthreads}, \texttt{\_\_shared}, \texttt{\_\_global}, \texttt{threadIdx}, \texttt{blockIdx}, \texttt{blockDim}, \texttt{gridDim}, \texttt{atomicAdd}, and more that we have not covered. 
+
+All of the reduction kernels we developed in Lecture 26 compile immediately as HIP kernels with the exception of the kernels that use \texttt{\_\_syncwarp}. 
+
+{\bf Neutral news}: There are some significant differences at the hardware level between contemporary NVIDIA and AMD GPUs. The SIMD width for NVIDIA GPU cores is typically 32 (also corresponds to the number of threads in a ``warp'') but for AMD GPUs it is typically 64 (also corresponds to the number of threads in a ``wavefront'').  This means that if we made assumptions about there being 32 threads in a CUDA warp as we did in reduction kernels V6 and V7 then we may have to adjust the code to assume 64 threads are SIMD synchronous. Unfortunately it appears that \texttt{\_\_syncwarp} is not supported, however we can assume that threads in a wave fronts are processed concurrently so we can just drop the extra synchronization calls.
+
+{\bf Less good news}: after discussions with AMD experts it appears that although HIP supports atomic operations, the floating point atomics are implemented to some extent in software and the AMD GPUs lack some of the hardware infrastructure that makes the NVIDIA GPU atomics so remarkably efficient as we saw in lecture 26. 
+
+In the following sections we explain how to port a CUDA code to HIP and explore some architectural issues that cause us to rethink at least part of the sum kernel implementation for HIP.
+
+\subsection{Translating CUDA API code to AMD HIP API code}
+
+There is a mechanical process to translating code that relies on the CUDA API to work with the AMD HIP API. 
+
+{\bf AMD HIP header}: the AMD HIP header is included with 
+
+\begin{minted}{c}
+ #include <hip/hip_runtime.h>
+\end{minted}
+
+{\bf AMD HIP API function naming}: many of the CUDA API calls that are named starting \texttt{cuda} are available in the AMD HIP API and predictably are named starting with \texttt{hip}.  For instance \texttt{cudaMalloc} becomes \texttt{hipMalloc}, \texttt{cudaMemcpy} becomes \texttt{hipMemcpy}, \texttt{cudaFree} becomes \texttt{hipFree}, \texttt{cudaEventCreate} becomes \texttt{hipEventCreate} and so on. 
+
+Some of the CUDA API function options also translate likewise, for instance \texttt{cudaMemcpyDeviceToHost} becomes \texttt{hipMemcpyDeviceToHost}. 
+
+\subsection{Launching an AMD HIP kernel}
+
+The CUDA API and AMD HIP API do diverge in one respect. The AMD HIP API is a library based API and strictly does not need a specialized compiler to build HIP code. Thus the way that CUDA requires us to use chevrons to specify the number of threads and thread-blocks is not directly supported in the AMD HIP API because the chevrons are not standard C or C++. Instead a CUDA kernel launch that looks like
+
+\begin{minted}{c}
+reductionKernelV4 <<< G,B >>> (N, c_a, c_suma);
+\end{minted}
+
+is instead achieved with
+
+\begin{minted}{c}
+ hipLaunchKernelGGL(reductionKernelV4, G,B,0, stream, N, c_a, c_suma);
+\end{minted}
+
+Notice the chevrons have been dropped. Also note that the kernel name, the grid size (G), and the thread-block size (B) are now passed as arguments to the kernel launcher. Likewise the arguments to the kernel are also passed to the kernel launcher as arguments.
+
+Finally, we notice two extra arguments. The 0 represents an optional argument to specify how much dynamically allocated shared memory is required for the kernel (we have not used this feature in CUDA either). The \texttt{stream} argument indicates which command queue stream we wish to inject this kernel task into on the GPU. At the beginning of the program we can create a \texttt{stream} using
+
+\begin{minted}{c}
+   hipStream_t stream;
+   hipStreamCreate(&stream);
+\end{minted}
+
+\subsection{Compiling AMD HIP code}
+
+One way to compile a HIP code is using the AMD HIP C Compiler \texttt{hipcc}. Unfortunately this is likely not installed on your laptop or indeed on the ARC clusters, in part because we typically use HIP to program AMD GPUs and the ARC clusters do not have these installed. However, the AMD HIP project is relatively new and it is even possible to cross compile HIP code to run on NVIDIA GPUs.
+
+To compile and run the L27 HIP code on a system with HIP with an AMD Radeon VII which has architecture gfx906:
+
+\myvbox[mytermbg]{\# location HIP code \\
+cd L27/hip \\\\
+\# compile HIP reduction code \\
+hipcc -o vectorReductions vectorReductions.cpp --amdgpu-target=gfx906 -O3 -ffast-math\\\\
+\# run HIP reduction code \\
+./vectorReductions 2000000}
+ 
+This code achieved the global DEVICE memory load throughputs shown in Table \ref{HIPreductionsPerformanceRadeonVII.tab}.  
+\begin{table}[htbp!]
+    \centering
+    \begin{tabular}{c|l|c|c|c} \hline
+    Kernel V\# & Notes & Elapsed (s) & Loads (GB/s) & Result \\ \hline
+5 &  Shared tree \& atomic & 5.08e-03 &   3.15e+01 &   20000000 \\ 
+6 &  V5 + Reduced sync \& atomic & 5.10e-03 &   3.14e+01 &   20000000 \\ 
+7 &  V6 + multi-loads per thread & 1.36e-03 &   1.17e+02 &   20000000 \\ 
+8 &  V7 with no atomics & 2.17e-04 &   7.36e+02 &   20000000 \\ 
+  \hline
+    \end{tabular}
+    \caption{HIP sum reductions for V5-V8 kernel implementations. Experiments conducted on an AMD Radeon VII consumer grade GPU, involving reducing an array of 20 million doubles, each double set to 1.}
+    \label{HIPreductionsPerformanceRadeonVII.tab}
+\end{table}
+
+The results show a similar trend for kernels V5-V7 to the CUDA variants albeit with significantly lower load throughput rates. However, the observant reader will note that there is an additional eighth kernel listed in the table. The V7 HIP kernel significantly under performed the theoretical peak bandwidth of one terabyte per second (1TB/s) of this AMD GPU so I developed a new version that did not use an \texttt{atomicAdd} to write out the accumulator increment for each thread-block since this was slowing the kernel execution down considerably. See slide 106 of \href{https://www.olcf.ornl.gov/wp-content/uploads/2019/09/AMD_GPU_HIP_training_20190906.pdf}{this AMD presentation} for confirmation that the AMD GPU atomic implementations may be expensive.
+
+The new V8 kernel for AMD HIP customized for the Radeon VII exploits the 64 way SIMD floating point units in each core to reduce the number of synchronizations and writes out the result of the thread-block reduction to a global DEVICE array instead of using an \texttt{atomicAdd} operation.
+
+\begin{minted}{c}
+// same as V7 but using one output per thread-block  
+// use 16 x 64 threads per threadblock 
+#define p_W64 64
+#define p_NW64 16
+__global__ void reductionKernelV8(int N, double *c_a, double *c_suma){
+
+  volatile __shared__ double s_a[p_NW64][p_W64];
+
+  int tx = threadIdx.x;
+  int ty = threadIdx.y;
+  int b  = blockIdx.x;
+  int BX = blockDim.x;
+  int BY = blockDim.y;
+  int Nthreads = p_W64*p_NW64*gridDim.x;
+
+  int n = tx + ty*p_W64 + b*p_W64*p_NW64;
+  double an = 0;
+
+  while(n<N){
+    an += c_a[n];
+    n += Nthreads;
+  }
+ 
+   // initial load                                 
+  s_a[ty][tx] = an;
+
+  // first binary tree reduction (64 to 1 in 16 groups)
+  {
+    if(tx<32) s_a[ty][tx] += s_a[ty][tx+32];
+    if(tx<16) s_a[ty][tx] += s_a[ty][tx+16];
+    if(tx< 8) s_a[ty][tx] += s_a[ty][tx+8];
+    if(tx< 4) s_a[ty][tx] += s_a[ty][tx+4];
+    if(tx< 2) s_a[ty][tx] += s_a[ty][tx+2];
+    if(tx< 1) s_a[ty][ty] = s_a[ty][0] + s_a[ty][1];
+  }
+
+  // synchronize all warps                     
+  __syncthreads();
+
+  // second binary tree reduction                    
+  if(ty==0){
+    // 16 to 1 in one group      
+    if( tx< 8) s_a[0][tx]  = s_a[tx][tx] + s_a[tx+8][tx+8];
+    if( tx< 4) s_a[0][tx] += s_a[0][tx+4];
+    if( tx< 2) s_a[0][tx] += s_a[0][tx+2];
+
+    if( tx< 1){
+      c_suma[b] = s_a[0][0] + s_a[0][1];
+    }
+  }
+}
+\end{minted}
+%% hipcc compiler
+The V8 kernel achieves a reasonable percentage of peak with 736GB/s out of 1000GB/s when performing a vector reduction on an array of 20 million doubles. However in Table \ref{HIPreductionsV8PerformanceRadeonVII.tab} we show that the throughput performance strongly depends on the size of the array being reduced. For an array of 80 million entries the throughput increases to about 844GB/s which is a healthy percentage of peak. However, the performance drops considerably for smaller reductions with the elapsed time not being very different for sum reductions of arrays with 1.25 million and 2.5 million entries.
+\begin{table}[htbp!]
+    \centering
+    \begin{tabular}{c|c|c|c} \hline
+    Kernel V\# & Elapsed (s) & Loads (GB/s) & Result \\ \hline
+    8 &   4.37e-05 &   5.72e+01 &   312,500 \\ 
+    8 &   4.54e-05 &   1.10e+02 &   625,000 \\ 
+    8 &   5.12e-05 &   1.95e+02 &   1,250,000 \\ 
+    8 &   6.29e-05 &   3.18e+02 &   2,500,000 \\ 
+    8 &   8.48e-05 &   4.72e+02 &   5,000,000 \\ 
+    8 &   1.29e-04 &   6.19e+02 &   10,000,000 \\ 
+    8 &   2.27e-04 &   7.06e+02 &   20,000,000 \\ 
+    8 &   3.94e-04 &   8.13e+02 &   40,000,000 \\
+    8 &   7.58e-04 &   8.44e+02 &   80,000,000 \\ 
+    8 &   1.50e-03 &   {\bf 8.54e+02} &   160,000,000 \\
+  \hline
+    \end{tabular}
+    \caption{HIP sum reductions for the V8 kernel. Experiments conducted on an AMD Radeon VII consumer grade GPU, involving reducing an array of between 1.25 million and 160 million doubles, each double set to 1.}
+    \label{HIPreductionsV8PerformanceRadeonVII.tab}
+\end{table}
+
+The results in Table \ref{HIPreductionsV8PerformanceRadeonVII.tab} show that the kernel latency\footnote{Kernel latency here means the minimum time it takes to complete the kernel task.} for the reduction kernel is approximately 40 microseconds and we need to be reducing an array of at least 5 million entries to get to 50\% of the performance we can achieve with larger arrays. This should give you the sense that the AMD GPU is not designed to process small problems!
+
+\newpage
+\subsection{HIP: summary of API functions}
+
+Summary of HIP API functions as discussed above.
+\begin{table}[htbp!]
+    \centering
+    \begin{tabular}{p{2in}|p{4in}} \hline
+      Action & HIP API call\\ \hline
+      Allocate array on DEVICE & \texttt{hipMalloc(\&[POINTER], [NUMBER OF BYTES]);} \\
+      Allocate managed array on HOST/DEVICE &  \texttt{hipMallocManaged(\&[POINTER], [NUMBER OF BYTES]);} \\ \hline
+      Copy data from HOST to DEVICE & \texttt{hipMemcpy([DEVICE POINTER], [HOST POINTER], [NUMBER OF BYTES], hipMemcpyHostToDevice);} \\
+      Copy data from DEVICE to HOST & \texttt{hipMemcpy([HOST POINTER], [DEVICE POINTER], [NUMBER OF BYTES], hipMemcpyDeviceToHost);} \\ 
+      Free DEVICE array & \texttt{hipFree([DEVICE POINTER]);} \\ \hline
+      Launch kernel on DEVICE & \texttt{[KERNEL NAME] $<<<$ [NUMBER OF THREAD BLOCKS], [THREADS PER THREAD-BLOCK] $>>>$ ([ARGS]);} \\
+      Block until DEVICE queue flushes & \texttt{hipDeviceSynchronize();} \\
+    \hline\end{tabular}
+    \caption{Summary of commonly used OpenMP API functions.}
+    \label{ompDirectives.tab}
+\end{table}
+
+
+\newpage
+\section{Open Computing Language (OpenCL)}
+
+In the previous section we introduced AMD HIP as a more portable approach to programming both AMD and NVIDIA GPUs. This avoids the single vendor lock  that we suffer when using CUDA which is only compatible with NVIDIA GPUs currently. In this section we introduce an even more generic way to program GPUs and CPUs from all major processor manufacturers. 
+
+The \href{https://en.wikipedia.org/wiki/OpenCL}{Open Computing Language} (OpenCL) standard was initially established by Apple as a way to generalize NVIDIA's CUDA and enable Apple to add GPU computing support to the internals of their OS X operating system but avoiding a single vendor dependence. A working group was formed in 2008 to formalize the OpenCL standard which is now maintained by \href{https://www.khronos.org/opencl/}{the Khronos Group}. Most processor manufacturers provide an implementation of OpenCL for their products, including \href{https://software.intel.com/en-us/articles/opencl-drivers}{Intel} as part of their new \href{https://software.intel.com/en-us/oneapi}{OneAPI} ecosystem, \href{https://rocm.github.io/QuickStartOCL.html}{AMD} as part of their ROCM ecosystem, and  \href{https://developer.nvidia.com/opencl}{NVIDIA} as part of their CUDA SDK. There is a more complete list of OpenCL implementations \href{https://www.khronos.org/opencl/resources}{here}.
+
+The OpenCL project was launched very quickly after it became apparent that NVIDIA's CUDA toolchain became popular for general purpose GPU programming. The OpenCL standard was greatly influenced by CUDA and this was natural given the time involved. However, in order to satisfy all the manufacturers and their hardware constraint the OpenCL API is much more flexible and perhaps unfortunately has a steeper learning curve than CUDA. In the following we outline all the steps that are needed in order to replicate the vector addition task that we used to introduce CUDA.
+
+The broad steps that are required when writing an OpenCL based program:
+
+\begin{enumerate}
+\item Get a list of OpenCL platforms, i.e. OpenCL implementations installed on the system the program is running on. There may be NVIDIA, AMD, Intel, or other OpenCL platforms and possibly multiple variants from each manufacturer.
+\item Choose a platform and then get a list of available DEVICES on the chosen platform.
+\item Choose a DEVICE from the chosen platform.
+\item Create a context on the chosen DEVICE. The context will manage interactions with the chosen DEVICE.
+\item Create a command queue on the new context. Each context can manage multiple command queues.
+\item Load the compute kernel source file so that it can be compiled at runtime for the chosen DEVICE on the chosen platform. This is necessary since there is a combinatorially large number of combinations of platform and DEVICE.
+\item Create a program from the source file string. 
+\item Build the program executable for the chosen DEVICE from the program.
+\item Check for compilation errors when the program executable was built.
+\item Create a kernel from the compiled program (kind of like linking the compiled program to your regular executable).
+\item Create DEVICE arrays (called buffers) and copy data from the HOST to the DEVICE arrays.
+\item Attach arguments to the newly built DEVICE kernel.
+
+\item Enqueue the kernel on the DEVICE.
+\item Copy data from the DEVICE to the HOST.
+\end{enumerate}
+
+It might be apparent now why OpenCL has been less widely adopted than CUDA. All these extra steps can be off putting when starting a coding project. However, on the flip side the extra flexibility lets us avoid the vendor lock problem. The only real issue in adopting OpenCL is that hardware manufacturers have their own preferred pairings of programming models and processors. As a result OpenCL has been a lower priority for their development and support efforts. 
+
+The \texttt{L27/opencl} directory includes an \texttt{addVectorsOpenCL.cpp} HOST code source file and a \texttt{addVectors.cl} DEVICE kernel code source file that implements all the above steps. We excerpt the steps here:
+
+{\bf Get a list of OpenCL platforms}: 
+
+\begin{minted}{c}
+  /* get number of platforms */
+  clGetPlatformIDs(0, NULL, &platforms_n);
+
+  /* get list of platform IDs (platform == implementation of OpenCL) */
+  cl_platform_id *platforms = (cl_platform_id*) calloc(platforms_n, sizeof(cl_platform_id));
+  clGetPlatformIDs(platforms_n, platforms, &platforms_n);
+\end{minted}
+
+{\bf Note}: that we first have to query the CL API to determine how many platforms there are before getting a list of CL platform ID labels.
+
+{\bf Choose an OpenCL platform and get a list of DEVICEs available on that platform}
+
+In the following we choose platform numbered \texttt{plat}. 
+
+\begin{minted}{c}
+  /* get number of devices on platform plat */
+  cl_uint dtype = CL_DEVICE_TYPE_ALL;
+
+  clGetDeviceIDs(platforms[plat], dtype, 0, NULL, &devices_n);
+
+  // find all available device IDs on chosen platform (could restrict to CPU or GPU)                                                                     
+  cl_device_id *devices = (cl_device_id*) calloc(devices_n, sizeof(cl_device_id));
+
+  clGetDeviceIDs( platforms[plat], dtype, devices_n, devices, &devices_n);
+\end{minted}
+
+{\bf Choose a DEVICE and then create a context and queue for that DEVICE}
+
+\begin{minted}{c}
+  // choose user specified device                               
+  device = devices[dev];
+
+  // make compute context on device                              
+  context = clCreateContext((cl_context_properties *)NULL, 1, &device, &pfn_notify, (void*)NULL, &err);
+
+  // create command queue            
+  queue   = clCreateCommandQueueWithProperties(context, device, NULL, &err);
+\end{minted}
+
+{\bf Create string containing the source code of the OpenCL kernel}
+
+In this case we read all the source code text from a file called \texttt{addVectors.cl}
+\begin{minted}{c}
+  // build kernel function                                 
+  const char *sourceFileName = "addVectors.cl";
+  const char *functionName = "addVectors";
+
+  // read in text from source file      
+  struct stat statbuf;
+  FILE *fh = fopen(sourceFileName, "r");
+  if (fh == 0){
+    printf("Failed to open: %s\n", sourceFileName);
+    throw 1;
+  }
+  /* get stats for source file */
+  stat(sourceFileName, &statbuf);
+
+  /* read text from source file and add terminator */
+  char *source = (char *) malloc(statbuf.st_size + 1);
+  fread(source, statbuf.st_size, 1, fh);
+  source[statbuf.st_size] = '\0';
+\end{minted}
+
+{\bf Create a program from the kernel source file string}
+
+Creating and compiling the program takes two steps. First we create the program from the source code string
+\begin{minted}{c}
+  /* create program from source */
+  cl_program program = clCreateProgramWithSource(context, 1, (const char **) & source, (size_t*) NULL, &err);
+
+  if (!program){
+    printf("Error: Failed to create compute program!\n");
+    throw 1;
+  }
+  \end{minted}
+  
+  Then we actually build the executable
+  
+  \begin{minted}{c}
+
+  /* compile and build program */
+  const char *allFlags = " ";
+  err = clBuildProgram(program, 1, &device, allFlags, (void (*)(cl_program, void*))  NULL, NULL);
+\end{minted}
+
+{\bf Check for kernel compilation errors}
+
+The kernel compilation may fail so we need to check the OpenCL API for errors
+
+\begin{minted}{c}
+  /* check for compilation errors */
+  char *build_log;
+  size_t ret_val_size;
+  err = clGetProgramBuildInfo(program, device, CL_PROGRAM_BUILD_LOG, 0, NULL, &ret_val_size);
+
+  build_log = (char*) malloc(ret_val_size+1);
+  err = clGetProgramBuildInfo(program, device, CL_PROGRAM_BUILD_LOG, ret_val_size, build_log, (size_t*) NULL);
+
+  /* to be carefully, terminate with \0                           
+     there's no information in the reference whether the string is 0 terminated or not */
+  build_log[ret_val_size] = '\0';
+
+  /* print out compilation log */
+  fprintf(stderr, "%s", build_log );
+\end{minted}
+
+{\bf Convert the compiler kernel into a runnable executable for the DEVICE}
+
+Not done yet. Now the kernel is compiled we need to make it runnable as follows
+
+\begin{minted}{c}
+   /* create runnable kernel */
+  cl_kernel kernel = clCreateKernel(program, functionName, &err);
+  if (! kernel || err != CL_SUCCESS){
+    printf("Error: Failed to create compute kernel!\n");
+    throw 1;
+  }
+\end{minted}
+
+{\bf Set up array storage on the HOST and DEVICE}
+
+The next step is more familiar from the CUDA introduction where we allocate arrays on the HOST, populate them, allocate DEVICE arrays, and copy data from the HOST arrays to the DEVICE arrays.
+
+\begin{minted}{c}
+  /* create host array */
+  size_t sz = N*sizeof(float);
+
+  float *h_x = (float*) malloc(sz);
+  float *h_y = (float*) malloc(sz);
+  float *h_z = (float*) malloc(sz);
+  for(int n=0;n<N;++n){
+    h_x[n] = n;
+    h_y[n] = 1-n;
+  }
+
+  /* create device buffer and copy from host buffer */
+  cl_mem c_x = clCreateBuffer(context, CL_MEM_READ_WRITE | CL_MEM_COPY_HOST_PTR, sz, h_x, &err);
+  cl_mem c_y = clCreateBuffer(context, CL_MEM_READ_WRITE | CL_MEM_COPY_HOST_PTR, sz, h_y, &err);
+  cl_mem c_z = clCreateBuffer(context, CL_MEM_READ_WRITE | CL_MEM_COPY_HOST_PTR, sz, h_z, &err);
+\end{minted}
+
+{\bf Note}: we use \texttt{clCreateBuffer} instead of \texttt{cudaMalloc} and pass a pointer into the OpenCL create buffer function to the HOST data we wish to copy to the new DEVICE array.
+
+{\bf Attach arguments to the runnable kernel}
+
+In CUDA we could just launch a kernel using the fancy chevron syntax, but in OpenCL just like HIP we need to use a launching function. The OpenCL kernel launcher does not accept the kernel arguments so we must attach the kernel arguments before calling the launcher.
+
+\begin{minted}{c}
+  /* now set kernel arguments */
+  clSetKernelArg(kernel, 0, sizeof(int), &N);
+  clSetKernelArg(kernel, 1, sizeof(cl_mem), &c_x);
+  clSetKernelArg(kernel, 2, sizeof(cl_mem), &c_y);
+  clSetKernelArg(kernel, 3, sizeof(cl_mem), &c_z);
+\end{minted}
+
+This can be an epic pain if the kernel has many arguments and the arguments change between invocations. Typically we create a kernel launch function that does this step so that it does not need to be visible when we want to call a kernel.
+
+{\bf Finally we get to launch the kernel}
+
+Just as with CUDA and HIP we need to specify how many threads and thread-blocks we wish to use. This information is provided to the OpenCL kernel launcher as follows
+
+\begin{minted}{c}
+ /* set thread array */
+  int dim = 1;
+  size_t Nt = 32;
+  size_t Ng = Nt*((N+Nt-1)/Nt);
+  size_t local[3] = {Nt,1,1};
+  size_t global[3] = {Ng,1,1};
+
+  /* queue up kernel */
+  clEnqueueNDRangeKernel(queue, kernel, dim, 0, global, local, 0, (cl_event*)NULL, NULL);
+\end{minted}
+
+In this case we are specifying 32 ``work-items'' (threads) per OpenCL ``work-group'' (thread-block). The \texttt{clEnqueueNDRangeKernel} will queue up the runnable kernel on the queue we created for the DEVICE we selected.
+
+{\bf To finish up}
+
+After this epic journey we can finally copy the data back from the output DEVICE array to a HOST array and then interact with the results on the HOST.
+
+\begin{minted}{c}
+  /* blocking read from device to host */
+  clFinish(queue);
+
+  /* blocking read to host */
+  clEnqueueReadBuffer(queue, c_z, CL_TRUE, 0, sz, h_z, 0, 0, 0);
+
+  /* print out results */
+  for(int n=0;n<N;++n)
+    printf("h_z[%d] = %g\n", n, h_z[n]);
+\end{minted}
+
+And that's a wrap! 
+
+\subsection{Comparison of CUDA and OpenCL kernel languages}
+
+Programming compute kernels for OpenCL is very much like programming kernels using CUDA. The similarities between the two kernel languages are more than superficial, albeit with syntactical variations that are more obvious than those between HIP and CUDA. 
+
+In Table \ref{CUDAvOpenCLThreadIndexing.tab} we compare the CUDA and OpenCL kernel syntax for obtaining (multi-dimensional) thread indices and thread array dimensions for the currently executing thread. Note for CUDA, HIP, and OpenCL that each thread (OpenCL work-item) has three coordinates within a thread-block (OpenCL work-group) although so far we have only arranged thread-blocks with 1D or 2D indexing. Likewise the grid of thread-blocks can be 1D, 2D, or 3D indexed. This multi-dimensional array of threads originally stems from the origins of GPUs in graphics rendering where it is natural to use 2D arrays of thread-blocks with 2D threads with the thread-blocks to partition the tasks of rendering a 2D screen image in pixel blocks. Some graphics applications required extra depth thus the 3D thread indexing options.
+
+
+The \href{https://en.wikipedia.org/wiki/CUDA}{CUDA wiki page} includes more information about limits on the number of threads and the dimensions of the thread arrays and in fact how this has changed with successive generations of NVIDIA GPUs.  The \href{https://en.wikipedia.org/wiki/OpenCL}{OpenCL wiki page} provides information about how the differences between successive versions of OpenCL as the standard has evolved. Note the one-to-one relationship between the CUDA and OpenCL functionality.
+\begin{table}[htbp!]
+    \centering
+    \begin{tabular}{l||l|l} \hline
+    Description         &  CUDA syntax & OpenCL syntax \\ \hline
+    Number of thread-blocks in first index  & \texttt{gridDim.x} & \texttt{get\_num\_groups(0)} \\
+   Number of thread-blocks in second index  & \texttt{gridDim.y} & \texttt{get\_num\_groups(1)} \\
+    Number of thread-blocks in third index  & \texttt{gridDim.z} & \texttt{get\_num\_groups(2)} \\
+    \hline
+    First thread-block index  & \texttt{blockIdx.x} & \texttt{get\_group\_id(0)} \\
+    Second thread-block index  & \texttt{blockIdx.y} & \texttt{get\_group\_id(1)} \\
+    Third thread-block index  & \texttt{blockIdx.z} & \texttt{get\_group\_id(2)} \\ \hline
+    First thread-block size  & \texttt{blockDim.x} & \texttt{get\_local\_size(0)} \\
+    Second thread-block size  & \texttt{blockDim.y} & \texttt{get\_local\_size(1)} \\
+    Third thread-block index  & \texttt{blockDim.z} & \texttt{get\_local\_size(2)} \\ \hline
+     First thread index in group & \texttt{threadIdx.x} & \texttt{get\_local\_id(0)} \\
+     Second thread index in group & \texttt{threadIdx.y} & \texttt{get\_local\_id(1)} \\
+     Third thread index in group & \texttt{threadIdx.z} & \texttt{get\_local\_id(2)} \\ \hline
+    \end{tabular}
+    \caption{Comparison of CUDA and OpenCL kernel syntax for determining number of thread blocks, number of threads per thread-block, and index of executing thread in the thread-block, grid of blocks.}
+    \label{CUDAvOpenCLThreadIndexing.tab}
+\end{table}
+
+In Table \ref{CUDAvOpenCLAnnotations.tab} we summarize comparisons of CUDA and OpenCL DEVICE code annotations and barriers. Note that in this case there is not exactly a one-to-one correspondence. OpenCL typically targets more general processor architectures that may have more capabilities, hence there are additional features in the DEVICE code side of the OpenCL spec that are not included in CUDA.
+
+\begin{table}[htbp!]
+    \centering
+    \small
+    \begin{tabular}{l||l|l|l} \hline
+    Notation      & Purpose &  CUDA & OpenCL\\ \hline
+    Kernel function & Denote a DEVICE kernel & \texttt{\_\_global\_\_} & \texttt{\_\_kernel} \\
+    Device function & Denote a DEVICE function & \texttt{\_\_device\_\_} & N/A \\
+    Shared memory   & Denote a shared variable or array & \texttt{\_\_shared\_\_} & \texttt{\_\_local} \\
+    DEVICE pointer  & Indicate a global DEVICE pointer & N/A & \texttt{\_\_global} \\ \hline
+    Local memory fence & Barrier on shared memory accesses & \texttt{\_\_syncthreads()} & \texttt{barrier(CLK\_LOCAL\_MEM\_FENCE)} \\ 
+    Global memory fence & Barrier on global memory accesses & \texttt{\_\_syncthreads()} & \texttt{barrier(CLK\_GLOBAL\_MEM\_FENCE)} \\  \hline
+    INT32 atomic add & Safe increment in DEVICE memory & \texttt{atomicAdd} & \texttt{atomic\_add} \\
+    FP32 or FP64 atomic & Safe increment in DEVICE memory & \texttt{atomicAdd} & N/A \\ \hline
+    \end{tabular}
+    \normalsize
+    \caption{Comparison of CUDA and OpenCL DEVICE code annotation, syntax, and barrier commands.}
+    \label{CUDAvOpenCLAnnotations.tab}
+\end{table}
+
+One major difference is that although both OpenCL and CUDA support integer atomic operations, OpenCL does not generically support floating point atomic operations while CUDA does. Some manufactures may OpenCL provide an extension with this capability but it is not a functionality that we can generally rely on. This is likely due to the lack of hardware atomic capabilities on some processors. And this issue gets to the heart of OpenCL. Any function in the standard has to be supported by a range of different processor architectures. This means that OpenCL has trailed CUDA in capabilities because when NVIDIA upgrades GPU capabilities it can immediately update CUDA. However, updates to OpenCL have wait for broad support of a feature and also be approved by a large number of OpenCL committee members.
+
+In summary there is a very close relationship between the CUDA and OpenCL programming terminologies. OpenCL code can run on a large range of architectures. CUDA codes can only run on NVIDIA GPUs, but has a faster changing feature set as NVIDIA GPU hardware capabilities evolves. In contrast OpenCL capabilities amount to a lowest common denominator amongst all hardware, although individual OpenCL platforms include specialized extensions which may induce a programmer to abandon platform portability or to create multiple instances of compute kernels for multiple OpenCL platforms.
+
+\subsection{OpenCL tools}
+
+It should be apparent that managing a system with multiple OpenCL implementations can be problematic. Fortunately most OpenCL distributions include the \texttt{clinfo} command. By default it will give a lot of information, however we can give it command line arguments to summarize information about the available OpenCL platforms and devices. 
+
+On my workstation I get
+
+\myvbox[mytermbg]{clinfo --human -l\\
+Platform \#0: NVIDIA CUDA\\
+ +-- Device \#0: TITAN V\\
+ \`-- Device \#1: TITAN V\\
+}
+
+which shows that there is only one platform (OpenCL from the NVIDIA CUDA) and two DEVICEs available on that platform (two NVIDIA Titan V).
+
+\subsection{Running OpenCL on your VirtualBox}
+
+We can install an open source, vendor neutral, implementation of OpenCL called ``Portable OpenCL'' or POCL for short on your VirtualBox. We will at least be able to use POCL to run OpenCL code on your CPU, and that is a good option to have when developing OpenCL code on your laptop before trying it out on a system with a GPU and OpenCL installed.
+
+Instructions for installing POCL follow:
+
+\myvbox[mytermbg]{\# update apt-get package index \\
+sudo apt-get update -y\\ \\
+\# install OpenCL management library \\
+sudo apt-get install ocl-icd-opencl-dev -y \\ \\
+\# install some necessary package management stuff \\
+sudo apt-get install cmake pkg-config -y \\
+sudo apt-get install libhwloc-dev -y \\ \\
+\# install POCL \\
+sudo apt-get install pocl-opencl-icd -y \\\\
+\# install the OpenCL clinfo app \\
+sudo apt-get install clinfo -y \\ \\ 
+\# install OpenCL headers \\
+sudo apt-get install opencl-headers -y
+}
+
+{\bf Note}: when your Ubuntu guest starts up on your VirtualBox it will run the \texttt{apt-get} package manager in the background to update system software. You may need to wait for it to finish before using \texttt{apt-get}.
+
+\subsection{Running OpenCL on Cascades}
+
+The ARC Cascades has the NVIDIA CUDA SDK installed which includes limited support for OpenCL. To use OpenCL on Cascades:
+
+\myvbox[mytermbg]{\# ssh to cascades login \\
+ssh pid@cascades1.arc.vt.edu\\ \\
+\# update course repo ( I am assuming the course repo is in cmda3634) \\
+cd cmda3634 \\ 
+git pull \\ \\ 
+\# request slurm allocation for node with GPU\\
+salloc --partition=v100\_dev\_q --nodes=1  --gres=gpu:1 -Acmda3634 -t1:0:0\\\\
+\# load CUDA compilers module\\
+module load cuda \\\\
+\# cd to L27 \\
+cd L27/opencl \\\\
+\# make project using special makefile for cascades \\
+make -f makefile.cascades\\\\
+\# run program \\
+./addVectorsOpenCL
+}
+
+
+
+

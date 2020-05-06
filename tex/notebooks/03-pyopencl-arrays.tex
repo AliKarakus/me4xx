@@ -1,0 +1,181 @@
+
+    \hypertarget{pyopencl-arrays}{%
+\subsection{PyOpenCL: Arrays}\label{pyopencl-arrays}}
+
+    \hypertarget{setup-code}{%
+\subsubsection{Setup code}\label{setup-code}}
+
+    \begin{BGVerbatim}[commandchars=\\\{\}]
+{\color{incolor}In [{\color{incolor}1}]:} \PY{k+kn}{import} \PY{n+nn}{pyopencl} \PY{k}{as} \PY{n+nn}{cl}
+        \PY{k+kn}{import} \PY{n+nn}{numpy} \PY{k}{as} \PY{n+nn}{np}
+        \PY{k+kn}{import} \PY{n+nn}{numpy}\PY{n+nn}{.}\PY{n+nn}{linalg} \PY{k}{as} \PY{n+nn}{la}
+\end{BGVerbatim}
+
+    \begin{BGVerbatim}[commandchars=\\\{\}]
+{\color{incolor}In [{\color{incolor}2}]:} \PY{n}{a} \PY{o}{=} \PY{n}{np}\PY{o}{.}\PY{n}{random}\PY{o}{.}\PY{n}{rand}\PY{p}{(}\PY{l+m+mi}{1024}\PY{p}{,} \PY{l+m+mi}{1024}\PY{p}{)}\PY{o}{.}\PY{n}{astype}\PY{p}{(}\PY{n}{np}\PY{o}{.}\PY{n}{float32}\PY{p}{)}
+\end{BGVerbatim}
+
+    \begin{BGVerbatim}[commandchars=\\\{\}]
+{\color{incolor}In [{\color{incolor}3}]:} \PY{n}{ctx} \PY{o}{=} \PY{n}{cl}\PY{o}{.}\PY{n}{create\PYZus{}some\PYZus{}context}\PY{p}{(}\PY{n}{interactive}\PY{o}{=}\PY{k+kc}{True}\PY{p}{)}
+        \PY{n}{queue} \PY{o}{=} \PY{n}{cl}\PY{o}{.}\PY{n}{CommandQueue}\PY{p}{(}\PY{n}{ctx}\PY{p}{)}
+\end{BGVerbatim}
+
+    \hypertarget{creating-arrays}{%
+\subsubsection{Creating arrays}\label{creating-arrays}}
+
+    This notebook demonstrates working with PyOpenCL's arrays, which provide
+a friendlier (and more numpy-like) face on OpenCL's buffers. This is the
+module where they live:
+
+    \begin{BGVerbatim}[commandchars=\\\{\}]
+{\color{incolor}In [{\color{incolor}4}]:} \PY{k+kn}{import} \PY{n+nn}{pyopencl}\PY{n+nn}{.}\PY{n+nn}{array}
+\end{BGVerbatim}
+
+    Now transfer to a \emph{device array}.
+
+    \begin{BGVerbatim}[commandchars=\\\{\}]
+{\color{incolor}In [{\color{incolor}5}]:} \PY{n}{a\PYZus{}dev} \PY{o}{=} \PY{n}{cl}\PY{o}{.}\PY{n}{array}\PY{o}{.}\PY{n}{to\PYZus{}device}\PY{p}{(}\PY{n}{queue}\PY{p}{,} \PY{n}{a}\PY{p}{)}
+\end{BGVerbatim}
+
+    Works like a numpy array! (\texttt{shape}, \texttt{dtype},
+\texttt{strides})
+
+    \begin{BGVerbatim}[commandchars=\\\{\}]
+{\color{incolor}In [{\color{incolor}6}]:} \PY{n}{a\PYZus{}dev}\PY{o}{.}\PY{n}{shape}
+\end{BGVerbatim}
+
+\begin{BGVerbatim}[commandchars=\\\{\}]
+{\color{outcolor}Out[{\color{outcolor}6}]:} (1024, 1024)
+\end{BGVerbatim}
+            
+    \begin{BGVerbatim}[commandchars=\\\{\}]
+{\color{incolor}In [{\color{incolor}7}]:} \PY{n}{a\PYZus{}dev}\PY{o}{.}\PY{n}{dtype}
+\end{BGVerbatim}
+
+\begin{BGVerbatim}[commandchars=\\\{\}]
+{\color{outcolor}Out[{\color{outcolor}7}]:} dtype('float32')
+\end{BGVerbatim}
+            
+    \begin{BGVerbatim}[commandchars=\\\{\}]
+{\color{incolor}In [{\color{incolor}8}]:} \PY{n}{a\PYZus{}dev}\PY{o}{.}\PY{n}{strides}
+\end{BGVerbatim}
+
+\begin{BGVerbatim}[commandchars=\\\{\}]
+{\color{outcolor}Out[{\color{outcolor}8}]:} (4096, 4)
+\end{BGVerbatim}
+            
+    \hypertarget{working-with-arrays}{%
+\subsubsection{Working with arrays}\label{working-with-arrays}}
+
+    \textbf{Goal:} Wanted to double all entries.
+
+    \begin{BGVerbatim}[commandchars=\\\{\}]
+{\color{incolor}In [{\color{incolor}9}]:} \PY{n}{twice\PYZus{}a\PYZus{}dev} \PY{o}{=} \PY{l+m+mi}{2}\PY{o}{*}\PY{n}{a\PYZus{}dev}
+\end{BGVerbatim}
+
+    Easy to turn back into a \texttt{numpy} array.
+
+    \begin{BGVerbatim}[commandchars=\\\{\}]
+{\color{incolor}In [{\color{incolor}10}]:} \PY{n}{twice\PYZus{}a} \PY{o}{=} \PY{n}{twice\PYZus{}a\PYZus{}dev}\PY{o}{.}\PY{n}{get}\PY{p}{(}\PY{p}{)}
+\end{BGVerbatim}
+
+    Check!
+
+    \begin{BGVerbatim}[commandchars=\\\{\}]
+{\color{incolor}In [{\color{incolor}11}]:} \PY{c+c1}{\PYZsh{}check}
+         
+         \PY{n+nb}{print}\PY{p}{(}\PY{n}{la}\PY{o}{.}\PY{n}{norm}\PY{p}{(}\PY{n}{twice\PYZus{}a} \PY{o}{\PYZhy{}} \PY{l+m+mi}{2}\PY{o}{*}\PY{n}{a}\PY{p}{)}\PY{p}{)}
+\end{BGVerbatim}
+
+    \begin{BGVerbatim}[commandchars=\\\{\}]
+0.0
+
+    \end{BGVerbatim}
+
+    Can just \texttt{print} the array, too.
+
+    \begin{BGVerbatim}[commandchars=\\\{\}]
+{\color{incolor}In [{\color{incolor}12}]:} \PY{n+nb}{print}\PY{p}{(}\PY{n}{twice\PYZus{}a\PYZus{}dev}\PY{p}{)}
+\end{BGVerbatim}
+
+    \begin{BGVerbatim}[commandchars=\\\{\}]
+[[1.9884549  1.9853095  0.17914777 {\ldots} 1.6878643  1.0856574  0.5063481 ]
+ [0.8978882  0.8065957  1.718012   {\ldots} 1.2990425  1.3980168  0.02950122]
+ [0.9073179  0.20164105 1.8345034  {\ldots} 1.777128   1.6947111  1.7179842 ]
+ {\ldots}
+ [1.3738339  1.1683357  0.6579218  {\ldots} 0.5115313  1.2634456  1.8362907 ]
+ [0.9982358  0.7504688  0.69106174 {\ldots} 1.9170644  1.3577774  1.3122113 ]
+ [0.7629418  0.7740215  1.8698179  {\ldots} 1.3633679  0.09284367 0.79888624]]
+
+    \end{BGVerbatim}
+
+    \begin{center}\rule{0.5\linewidth}{\linethickness}\end{center}
+
+    Easy to evaluate arbitrary (elementwise) expressions.
+
+    \begin{BGVerbatim}[commandchars=\\\{\}]
+{\color{incolor}In [{\color{incolor}13}]:} \PY{k+kn}{import} \PY{n+nn}{pyopencl}\PY{n+nn}{.}\PY{n+nn}{clmath}
+\end{BGVerbatim}
+
+    \begin{BGVerbatim}[commandchars=\\\{\}]
+{\color{incolor}In [{\color{incolor}14}]:} \PY{n}{cl}\PY{o}{.}\PY{n}{clmath}\PY{o}{.}\PY{n}{sin}\PY{p}{(}\PY{n}{a\PYZus{}dev}\PY{p}{)}\PY{o}{*}\PY{o}{*}\PY{l+m+mi}{2} \PY{o}{\PYZhy{}} \PY{p}{(}\PY{l+m+mf}{1.}\PY{o}{/}\PY{n}{a\PYZus{}dev}\PY{p}{)} \PY{o}{+} \PY{l+m+mi}{5}
+\end{BGVerbatim}
+
+\begin{BGVerbatim}[commandchars=\\\{\}]
+{\color{outcolor}Out[{\color{outcolor}14}]:} array([[  4.697005 ,   4.6939726,  -6.155966 , {\ldots},   4.3734713,
+                   3.4246325,   1.1128874],
+                [  2.9609196,   2.6744628,   4.409206 , {\ldots},   3.8261938,
+                   3.9834414, -62.793587 ],
+                [  2.9877703,  -4.9084854,   4.5401173, {\ldots},   4.477024 ,
+                   4.3816566,   4.4091735],
+                {\ldots},
+                [  3.9463742,   3.5923214,   2.0644927, {\ldots},   1.1541729,
+                   3.76576  ,   4.542041 ],
+                [  3.2255726,   2.4693146,   2.2206178, {\ldots},   4.6264334,
+                   3.9212987,   3.8479989],
+                [  2.5171647,   2.5585396,   4.5776696, {\ldots},   3.9300725,
+                 -16.539433 ,   2.6477618]], dtype=float32)
+\end{BGVerbatim}
+            
+    \hypertarget{low-level-access}{%
+\subsubsection{Low-level Access}\label{low-level-access}}
+
+Can still do everything manually though!
+
+    \begin{BGVerbatim}[commandchars=\\\{\}]
+{\color{incolor}In [{\color{incolor}15}]:} \PY{n}{prg} \PY{o}{=} \PY{n}{cl}\PY{o}{.}\PY{n}{Program}\PY{p}{(}\PY{n}{ctx}\PY{p}{,} \PY{l+s+s2}{\PYZdq{}\PYZdq{}\PYZdq{}}
+         \PY{l+s+s2}{    \PYZus{}\PYZus{}kernel void twice(\PYZus{}\PYZus{}global float *a)}
+         \PY{l+s+s2}{    }\PY{l+s+s2}{\PYZob{}}
+         \PY{l+s+s2}{      int gid0 = get\PYZus{}global\PYZus{}id(0);}
+         \PY{l+s+s2}{      int gid1 = get\PYZus{}global\PYZus{}id(1);}
+         \PY{l+s+s2}{      int i = gid1 * 1024 + gid0;}
+         \PY{l+s+s2}{      a[i] = 2*a[i];}
+         \PY{l+s+s2}{    \PYZcb{}}
+         \PY{l+s+s2}{    }\PY{l+s+s2}{\PYZdq{}\PYZdq{}\PYZdq{}}\PY{p}{)}\PY{o}{.}\PY{n}{build}\PY{p}{(}\PY{p}{)}
+         \PY{n}{twice} \PY{o}{=} \PY{n}{prg}\PY{o}{.}\PY{n}{twice}
+\end{BGVerbatim}
+
+    \begin{BGVerbatim}[commandchars=\\\{\}]
+{\color{incolor}In [{\color{incolor}16}]:} \PY{n}{twice}\PY{p}{(}\PY{n}{queue}\PY{p}{,} \PY{n}{a\PYZus{}dev}\PY{o}{.}\PY{n}{shape}\PY{p}{,} \PY{k+kc}{None}\PY{p}{,} \PY{n}{a\PYZus{}dev}\PY{o}{.}\PY{n}{data}\PY{p}{)}
+\end{BGVerbatim}
+
+\begin{BGVerbatim}[commandchars=\\\{\}]
+{\color{outcolor}Out[{\color{outcolor}16}]:} <pyopencl.\_cl.Event at 0x7f89ec4fcf50>
+\end{BGVerbatim}
+            
+    \begin{BGVerbatim}[commandchars=\\\{\}]
+{\color{incolor}In [{\color{incolor}17}]:} \PY{n+nb}{print}\PY{p}{(}\PY{n}{la}\PY{o}{.}\PY{n}{norm}\PY{p}{(}\PY{n}{a\PYZus{}dev}\PY{o}{.}\PY{n}{get}\PY{p}{(}\PY{p}{)} \PY{o}{\PYZhy{}} \PY{l+m+mi}{2}\PY{o}{*}\PY{n}{a}\PY{p}{)}\PY{p}{,} \PY{n}{la}\PY{o}{.}\PY{n}{norm}\PY{p}{(}\PY{n}{a}\PY{p}{)}\PY{p}{)}
+\end{BGVerbatim}
+
+    \begin{BGVerbatim}[commandchars=\\\{\}]
+0.0 591.0051
+
+    \end{BGVerbatim}
+
+    But the hardcoded 1024 is \ldots{} inelegant. So fix that!
+
+(Also with arg \texttt{dtype\ setting}.)
+
+    \begin{BGVerbatim}[commandchars=\\\{\}]
+{\color{incolor}In [{\color{incolor} }]:} 
+\end{BGVerbatim}

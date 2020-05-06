@@ -1,0 +1,267 @@
+\chapterauthor{Tim Warburton}
+
+\epigraph{Every time I see some piece of medical research saying that caffeine is good for you, I high-five myself. Because I'm going to live forever.}{Linus Torvalds (creator of Linux)}
+
+\minitoc
+
+\section{Notes on notation}
+
+\vspace{8pt}\noindent {\bf Be alert when you see [SOME CAPITALIZED TEXT IN SQUARE BRACKETS]}: in the following there are several places where some part of the text for a Linux terminal command must be supplied by you. 
+
+For instance a command that involves your VT NETID will require you to use substitute your actual NETID. When you see \texttt{[NETID]} in a mytermbg box command it means you should ignore the square brackets and replace NETID with your actual VT NETID.
+
+In my case if I  see \texttt{cmda3634[NETID]} I will substitute \texttt{cmda3634tcew} since my VT NETID is tcew. 
+Hopefully when you see \texttt{[SOME CAPITAL TEXT IN SQUARE BRACKETS]} it will be clear what text should be used in its place. Don't forget to lose the square brackets !
+
+%\newpage
+\section{Launching The Linux Terminal}
+
+There are numerous terminal apps available for text based interaction with the Ubuntu OS. I recommend starting with the simplest version. You can launch the Terminal app by clicking on the square arrays of dots at the bottom left corner of the desktop.
+
+\boximage{figures/L02/ubuntuAppSelector.png}{Ubuntu App Selector: accessed by clicking the square array of dots at the bottom left of the desktop}
+
+To locate the Terminal, type terminal into the search box at the top/middle. Notice that Ubuntu has located several other terminal apps too. These can be installed as optional extras. Double clicking on any of the other terminal apps will take you to the Ubuntu version of the App Store.
+
+\boximage{figures/L02/ubuntuTerminalSearch.png}{Ubuntu Terminal: accessed by searching for terminal in the Ubuntu App Selector.}
+
+\FloatBarrier
+
+You are going to be using the Terminal a lot so go ahead and right mouse (PC host) or two finger click (OSX host) and select "Add to favorites". Hit the escape key to get out of the App Selector and you should see the terminal show up in your Ubuntu side bar
+
+\boximage{figures/L02/ubuntuTerminalFavorite.png}{Ubuntu Terminal: added to task bar.}
+
+\FloatBarrier
+Now let's see what this terminal thing can do. Click on the Terminal icon on your task bar. This should launch a window that will be your text based interface into the Ubuntu OS. From here you will be able to create/modify/edit/delete/move files without ever touching a mouse or keypad.
+
+\boximage{figures/L02/ubuntuTerminalLaunch.png}{Ubuntu Terminal: text prompt after launch.}
+
+Note: I have already customized the terminal behavior and changed the prompt. You might instead see some information about your current path.
+
+\begin{center}
+    \underline{Welcome to 1970s style computing.}
+\end{center}
+
+\section{Interacting with the Terminal}
+
+In the following when there is {\bf text in a light blue box} it is in fact a set of commands that you can type into the terminal in your \VB and possibly some expected output. 
+
+\subsection{Present Working Directory: \texttt{pwd}}
+The Ubuntu OS file system consists of a hierarchical arrangement of directories (also called folders in other OS). The root directory is the lowest directory and is denoted by the forward slash character /
+
+{\bf Observation}: All directories in the Ubuntu file system have a path relative to /
+
+For example we can find out which directory the Terminal has placed you in by default by typing
+\myvbox[mytermbg]{pwd}
+
+\boximage{figures/L02/ubuntuPwd.png}{Ubuntu Terminal: output of the \texttt{pwd} command.}
+
+In my case, when Ubuntu created my user account it decided to create my home directory in the directory \texttt{/home/tcew}. We can unpick this a little: the \texttt{home} directory is a sub-directory located in the root directory (denoted by the forward slash followed by home) that contains all the user directories. My username is tcew so Ubuntu created a sub-directory in the \texttt{/home} directory called \texttt{/home/tcew}. Linux is in general designed for multiple users. If a new user called bob was added to the system then bob's home directory would be called \texttt{/home/bob}
+
+Online man page: \href{http://manpages.ubuntu.com/manpages/trusty/man1/pwd.1posix.html}{web}
+
+\FloatBarrier
+
+\subsection{List Contents of Directory: \texttt{ls}}
+
+Each directory in the Ubuntu file system may contain subdirectories and also possibly files. A file is a container for a collection of data. A simple example would be a file containing some text.
+
+We use the \texttt{ls} command to find the contents of a directory. For instance we can examine the contents of the current directory  with
+
+\myvbox[mytermbg]{ls}
+
+\boximage{figures/L02/ubuntuLs.png}{Ubuntu Terminal: output of the \texttt{ls} command.}
+
+Notice that the default home directory includes a bunch of pre-built sub-directories for things like the Desktop, Videos, Pictures. We can find out more about the contents of the directories by adding a command-line-argument to ls
+
+\myvbox[mytermbg]{ls -l}
+
+The extra \texttt{-l} argument tells the \texttt{ls} app that you want information to be listed about the attributes of the contents of the directory
+
+\boximage{figures/L02/ubuntuLsL.png}{Ubuntu Terminal: output of the \texttt{ls} command.}
+
+There are several optional command-line-arguments that we can pass to the \texttt{ls} command. You can use a search engine to find man pages for every Linux Terminal command, or you can use the \texttt{man} command described in the next section.
+
+\FloatBarrier
+\newpage
+\subsection{Manual Information for a Command: \texttt{man}}
+
+The \texttt{man} command reports usage information for a given command line app. For instance 
+
+\myvbox[mytermbg]{man ls}
+
+\boximage{figures/L02/ubuntuManLs.png}{Ubuntu Terminal: output of the \texttt{man ls} manual query for \texttt{ls}.}
+
+To exit out of the man page you can press the ``q'' key.
+
+\newpage
+\subsection{Making a New Sub-directory: \texttt{mkdir}}
+
+We can add a new sub-directory called foo to the present working directory with the \texttt{mkdir} command
+
+\myvbox[mytermbg]{mkdir foo}
+
+I could also have specified the whole path for the new foo directory with 
+
+\myvbox[mytermbg]{mkdir /home/tcew/foo}
+
+In your case you would use
+
+\myvbox[mytermbg]{mkdir /home/[YOUR UBUNTU USERNAME]/foo}
+
+We can check that the sub-directory was added using
+
+\myvbox[mytermbg]{ls}
+
+or 
+
+\myvbox[mytermbg]{ls /home/tcew}
+
+Note that since the home directory is used so often there is a shorthand notation we can use for it. Instead of typing the whole path we can use 
+
+\myvbox[mytermbg]{ls \mytilde/}
+
+where the tilde character \mytilde is expanded into the directory path for the home directory. Putting this together
+
+
+\boximage{figures/L02/ubuntuMkdir.png}{Ubuntu Terminal: using \texttt{mkdir} to create a new sub-directory of the home directory and checkign the result. Recall: here the tilde is expanded into the path of the user home directory.}
+
+\subsection{Removing an Empty Sub-directory: \texttt{rmdir}}
+
+We can remove an empty sub-directory called foo with the \texttt{rmdir}
+
+\myvbox[mytermbg]{rmdir foo}
+
+This command will fail if the foo directory is not empty.
+
+\newpage
+\subsection{Changing the Present Working Directory: \texttt{cd}}
+
+The Terminal keeps track of your present working directory. Instead of having to enter in the path to a directory you want to work in you can issue a ``change present working directory'' command using the \texttt{cd} command. For instance you can change into the foo directory that we have created with
+
+\myvbox[mytermbg]{cd \mytilde/foo}
+
+and then check the result with \texttt{pwd}.
+
+\boximage{figures/L02/ubuntuCd.png}{Ubuntu Terminal: changing the present working directory with \texttt{cd}.}
+
+{\bf Note}: If you issue the \texttt{cd} command without an argument it will change your present working directory to your home directory.
+
+\newpage
+\subsection{Getting a File from the Internet: \texttt{wget}}
+
+It is sometimes useful to download a file from the internet without having to use a browser. The \texttt{wget} (short for web-get) command line app can do this for a given URL
+
+\myvbox[mytermbg]{wget [WEB URL]}
+
+Note: that if \texttt{wget} is not installed then you can install it using the \texttt{apt-get} package manager.
+
+\subsection{Installing Software from the Terminal: \texttt{apt-get}}
+
+Although the Ubuntu iso was a 2GB download it only contains the barebones needed to run the OS. The standard iso distribution is missing several useful applications. For instance the one and only text editor: \texttt{emacs}\footnote{There are rumors of other text editors with names like \texttt{vim}, \texttt{nano}, \texttt{sublime}, \ldots but who would want to make such a poor life decision.}. 
+
+\boximage{figures/L02/real_programmers.png}{Image source: xkcd comic  \href{https://xkcd.com/378/}{https://xkcd.com/378/}}
+ %   \label{xkcdEmacs.fig}
+ 
+For some strange reason \texttt{emacs} is not bundled with the standard Ubuntu iso but we can rectify this oversight by invoking the \texttt{apt-get} package manager from the command line. In the following we first update the \texttt{apt-get} package index and then we request it install v25 \texttt{emacs}. 
+
+\boximagelabel{figures/L02/xkcdSudo.png}{Image source: xkcd comic \href{https://xkcd.com/149/}{https://xkcd.com/149/}}{sudo.fig}
+
+Note that we perform both of those tasks as the super-user, i.e. with elevated OS permissions by prefacing the \texttt{apt-get} command with the super-user-do (\texttt{sudo}) command. See Figure \ref{sudo.fig} for the XKCD take on \texttt{sudo}. The first time you invoke \texttt{sudo} it will ask for the super-user (also known as root) password. On Ubuntu the root password defaults to your usual user password.
+
+\myvbox[mytermbg]{\# First update apt-get package index  \\ sudo apt-get update \\ \\ \# Second install emacs \\  sudo apt-get install emacs25 \\ \\ \# Third launch emacs to edit a file \\ emacs foo.text}
+
+Later in the course we will go over the user interface to \texttt{emacs}. In the meantime I recommend following an online tutorial. There is a neat absolute beginners guide \href{http://www.jesshamrick.com/2012/09/10/absolute-beginners-guide-to-emacs/}{here}. You can also use your favorite search engine to find video tutorials, cheat sheets, and guided tours.
+
+{\bf Note}: you can feel free to start using \texttt{emacs} with the GUI, but do keep in mind it will be very useful to be able to use it from the command line later on when you log on to remote systems that do not let you easily use windowed apps. To run \texttt{emacs} in no-windows, i.e. text terminal mode 
+
+\myvbox[mytermbg]{emacs -nw [TEXT FILE NAME]}
+
+However, to navigate in no-windows mode you will need to know some keyboard short cuts. More about that later.
+
+\section{Capturing screen shots from the command line}
+
+The \href{https://vitux.com/how-to-install-and-use-shutter-screenshot-tool-in-ubuntu-18-04-lts/}{\texttt{shutter}} screenshot tool is an easy to use and versatile tool for capturing screenshots and pictures of specific windows.
+
+To install
+\myvbox[mytermbg]{
+sudo add-apt-repository ppa:shutter/ppa \\
+sudo apt-get update \\
+sudo apt-get install shutter
+}
+
+To take a snapshot of the current terminal you can use the following command adapted from \href{https://askubuntu.com/questions/194427/what-is-the-terminal-command-to-take-a-screenshot}{askubuntu.com}. This will produce a file called \texttt{shot.png} in the \texttt{pwd}.
+
+\myvbox[mytermbg]{
+ shutter -a -o shot.png -e >\& /dev/null 
+}
+
+{\bf Note}: the cryptic \texttt{>\& /dev/null} after the command redirects the standard output and standard error streams from the command to the ``null device''.  The null device is basically a black hole where you can send output if you do not want it to appear in the Terminal.
+
+If you want to capture a window with [WINDOW TITLE] in the title bar
+
+\myvbox[mytermbg]{shutter -w [WINDOW TITLE] -o shot.png -e >\& /dev/null}
+
+{\bf Note}: the [WINDOW TITLE] can include the \texttt{*} wild card.
+
+\section{Summary of Terminal commands}
+
+In the following table we give a brief summary of the Terminal commands that were introduced above. 
+
+\begin{table}[htbp!]
+    \centering
+    \begin{tabular}{l|l} \hline
+      Action & Terminal command \\ \hline
+         Show present working directory &  \texttt{pwd}\\ 
+         Change the present working directory & \texttt{cd [OPTIONAL DIRECTORY PATH]} \\ \hline
+         List contents of present working directory &  \texttt{ls}\\ 
+         List attributes of present working directory contents&  \texttt{ls -l}\\ 
+         List contents of home directory &  \texttt{ls \mytilde}\\ 
+         List contents of specified directory &  \texttt{ls [DIRECTORY PATH]}\\ \hline
+         Make a new sub-directory & \texttt{mkdir [DIRECTORY PATH]} \\ 
+         Remove an existing sub-directory & \texttt{rmdir [DIRECTORY PATH]} \\ 
+          \hline
+         Show manual page for a command &  \texttt{man [COMMAND NAME]}\\ \hline
+         Perform operation as root & \texttt{sudo [COMMAND] [COMMAND ARGUMENTS]} \\
+         Update package manager index & \texttt{sudo apt-get update} \\
+         Install a package & \texttt{sudo apt-get install [PACKAGE NAME]} \\ \hline
+         Launch the one true text editor & \texttt{emacs [TEXT FILE NAME]} \\ \hline
+         Get file from Internet & \texttt{wget [FILE URL]} \\ \hline
+         Background a suspended program & \texttt{bg} \\
+         Foreground a suspended program & \texttt{fg} \\
+         Run a program in the background & \texttt{[COMMAND NAME] [COMMAND ARGUMENTS] \&} \\ \hline
+         Find instances of a string in a file & \texttt{grep [STRING] [FILE NAME];} \\ \hline
+         Take a snapshot of the current active window &  \texttt{shutter -a -o [SNAPSHOT FILE NAME].png -e >\& /dev/null} \\ \hline
+         Find software limits on memory usage etc & \texttt{ulimit -S -a} \\ 
+    \hline\end{tabular}
+    \caption{Summary of commonly used Terminal commands discussed above.}
+    \label{terminalCommands.tab}
+\end{table}
+
+\section{Summary of Terminal short cuts}
+
+In the following table we give a list of bash shell keyboard shortcuts and other useful tips
+\begin{table}[htbp!]
+    \centering
+    \begin{tabular}{l|l} \hline
+      Action & Terminal short cut \\ \hline
+         Go backwards/forwards in command history & \texttt{up-arrow}, \texttt{down-arrow} \\
+         Go to start of line &  \texttt{ctrl-a}\\ 
+         Go to end of line & \texttt{ctrl-e}\\
+         Kill rest of line into buffer & \texttt{ctrl-k} \\
+         Yank text  from buffer & \texttt{ctrl-y} \\ \hline
+         Clear terminal window & \texttt{ctrl-l} \\
+         Suspend running program & \texttt{ctrl-z} \\
+         Kill running program & \texttt{ctrl-c} \\ \hline
+         Shorthand for home directory & \texttt{\mytilde{}} or  \texttt{\mytilde{}/} \\
+         Shorthand for one directory lower & \texttt{../} \\ 
+         Shorthand for two directories lower & \texttt{../../} \\
+         Wild card for everything in current directory & \texttt{*}. Example: \texttt{ls *} \\
+         Auto-completion of commands, file, directory names & Type first few characters and press \texttt{tab} \\
+    \hline\end{tabular}
+    \caption{Summary of commonly used Terminal short cuts.}
+    \label{terminalShortcuts.tab}
+\end{table}
+
+
+\noindent In the next lecture we will start using the Git project management system from the command line.
+

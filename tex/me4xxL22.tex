@@ -1,0 +1,298 @@
+\chapterauthor{Justin Krometis}
+%% Include notes from Justin Krometis on using  parallel R
+
+\epigraph{All the statistics in the world can't measure the warmth of a smile}{Chris Hart}
+
+\section{R}
+R is a technical computing language similar in some ways to MATLAB, NumPy/SciPy in Python, and Julia. Like those languages, R has lots of built-in functionality for array and matrix manipulation, but unlike MATLAB, R is free to download and to use.  R was developed by the statistics community (built on a predecessor called \texttt{S}) and primarily targeted toward statistical applications like data analysis, plotting, linear and nonlinear modeling. You can download R or review documentation at \url{https://www.r-project.org} or \url{https://cran.r-project.org}.
+
+\subsection{R Basics}
+R can be started from the command line, either interactively or by giving it a script to run, as follows:
+\begin{minted}{bash}
+# Start R interactively
+R
+
+#Run script
+Rscript  script.r 
+\end{minted}
+
+Basic R syntax includes:
+\begin{minted}{R}
+#Comments start with a hash
+
+x = 3     # (also x <- 3)
+
+ls()      # list current objects (e.g., variables)
+rm(x)     # delete an object
+
+#run code from a file
+source("script.r")
+
+#print to screen
+print("hi")
+cat("x is",x,"\n")
+
+q()       # exit
+\end{minted}
+
+
+\subsection{Packages}
+Like Python and Julia, R contains a built-in package manager that can be used to customize an install, and like those languages, R has an enormous community of users who contribute packages and make them publicly available for other people to use. Examples of popular packages include: 
+	
+\begin{itemize}
+  \item \texttt{ggplot2} for plotting
+  \item \texttt{dplyr} for data filtering and summarizing
+  \item \texttt{data.table} for large datasets
+  \item \texttt{rmarkdown} for notebooks
+\end{itemize}
+
+A full list is available at \url{https://cran.r-project.org}\footnote{See in particular: \url{https://cran.r-project.org/web/packages/available_packages_by_name.html}}. 
+
+To add a package from the command line, try: 
+\begin{minted}{R}
+  install.packages("mda", lib="~/R/lib")
+\end{minted}
+To use a package: 
+\begin{minted}{R}
+  library("mda",lib.loc="~/R/lib")
+\end{minted}
+
+You can also set the following environment variable for package location:
+\begin{minted}{bash}
+export R_LIBS="~/R/lib"
+\end{minted}
+
+\subsection{Arrays}
+R has a number of different variable types for managing datasets:
+\begin{itemize}
+  \item Vector: 1D array with entries of the same type
+  \item Matrix/Array: Multidimensional array with same data type
+  \item List: 1D array of (possibly) different types
+  \item Data Frame/Tibble: General dataset - columns can be different types
+\end{itemize}
+Data Frames, in particular, are particularly common. A typical R task is to, for example, read a comma-separated variable file (\texttt{*.csv}), which may have some text columns (e.g., vehicle manufacturer) and some numeric columns (e.g., vehicle miles per gallon), into a data frame, add or remove columns, manipulate data, and plot the results.
+
+The following functions are useful for investigating the structure of a given variable:
+\begin{minted}{R}
+length(v) # length
+str(df)   # structure
+class(x)  # class or type
+names(df) # names
+\end{minted}
+%v=c(x,y)  # combine into a vector
+
+Like other technical computing languages, R has built-in functionality for doing element-wise or matrix multiplication of two matrices. However, perhaps reflecting the different origins of the languages, the default meaning of \texttt{*} is element-wise multiplication, rather than matrix multiplication (as in MATLAB or Julia):
+\begin{minted}{R}
+#ELEMENT-WISE Multiply
+C = A * B
+
+#MATRIX Multiply
+C = A %*% B
+\end{minted}
+
+R also includes a series of \texttt{apply} functions that allow running an operation along dimensions of an array:
+\begin{minted}{R}
+#Operate along an array or dataframe
+apply(m, 1, mean) #mean of rows of m
+
+lapply(l, mean) #a list with the mean of each element of l
+sapply(l, mean) #a vector with the mean of each element of l
+[etc}
+\end{minted}
+
+The following program Listing \ref{mpg.list} reads data on vehicle miles per gallon into a data frame (data is available as part of the \texttt{ggplot2} package) and provides example commands for subsetting by rows or columns, computing mean values of some column, computing the average miles per gallon by manufacturer, and writing/reading the resulting data frame to/from a CSV file:
+%\lstinputlisting[language=R]{examples/mpg.r}
+\begin{listing}[ht]
+\inputminted{R}{code/L22/mpg.r}
+\caption{R program to manipulate the \texttt{mpg} dataset}
+\label{mpg.list}
+\end{listing}
+
+\subsection{Plotting with the \texttt{ggplot2} Package}
+Unlike in MATLAB, but like Python or Julia, plotting in R is available via downloadable packages. Perhaps the most popular package is \texttt{ggplot2}\footnote{\url{https://cran.r-project.org/web/packages/ggplot2/index.html}}, which is based on \textit{The Grammar of Graphics} by Leland Wilkinson. This package makes it very easy to generate a variety of plots from a data frame, although it may take a new user some time to grow accustomed to the syntax. An example is provided in Listing \ref{pi.plot.list} and Figure \ref{pi.plot.fig}; see also this cheatsheet for a starting point: \url{https://github.com/rstudio/cheatsheets/blob/master/data-visualization-2.1.pdf}.
+
+\begin{listing}[ht]
+\inputminted{R}{code/L22/mcpi_plot.r}
+\caption{R program to plot points inside and outside the unit circle}
+\label{pi.plot.list}
+\end{listing}
+
+\boximagelabel{figures/L22/pi.png}{Plot generated by Listing \ref{pi.plot.list}.}{pi.plot.fig}
+
+\section{Using R on ARC's Systems}
+(See Chapter \ref{ARC.chap} for information on accessing ARC's computational clusters.)
+
+Many R programs that run on your desktop can be immediately run on ARC's resources, though the following setup may be required:
+\begin{itemize}
+    \item Users will need to load the R version that they want via a software module
+    \item Non-standard packages may need to be installed in, e.g., the user's home directory
+    \item As with any work on ARC's systems, computationally-intensive R programs will need to be run on compute nodes via either interactive or batch jobs
+\end{itemize}
+The first two items are covered in the following subsections; for the third, see the discussion of job submission in Chapter \ref{ARC.chap}.
+
+\subsubsection{Loading the R module}
+To load R on NewRiver, you might use:
+\begin{minted}{bash}
+module purge
+module load intel
+module load mkl R/3.6.1
+\end{minted}
+To load the \texttt{R-parallel} module of parallel packages (see the next section), you may then want to use:
+\begin{minted}{bash}
+module load openmpi hdf5 netcdf R-parallel/3.4.4
+\end{minted}
+Note that you can see a list of versions of R installed via 
+
+\subsubsection{Adding R Packages}
+\emph{See also ARC's documentation on this topic: \url{http://www.arc.vt.edu/userguide/r/\#packages}}
+
+ARC's R installations come with a variety of packages installed. However, we cannot provide everything that every user might need. To use packages that we do not offer centrally, you can install them in your Home directory and then tell R where to find them. Here is an example installation of the \texttt{mda} package:
+
+\begin{enumerate}
+  \item Create a directory where the libraries will be installed, e.g.:
+    \begin{minted}{bash}
+    mkdir $HOME/R/lib
+    \end{minted}
+Note that the library install is tied to the compiler and R version you are using. If you plan to switch between clusters, compilers, or R versions, you may want to use a more complicated directory structure, e.g. 
+    \begin{minted}{bash}
+    mkdir $HOME/cascades/R/3.6.1/intel/lib
+    \end{minted}
+  \item Add the directory that you created to the \texttt{R\_LIBS} environment variable so R knows to look there when you try to load the library:
+    \begin{minted}{bash}
+    export R_LIBS="$HOME/R/lib:$R_LIBS"
+    \end{minted}
+  \item Open R (make sure the module is loaded - see above):
+    \begin{minted}{bash}
+    R
+    \end{minted}
+  \item Tell R to install the \texttt{mda} package in the directory that you just created:
+    \begin{minted}{R}
+    install.packages("mda", lib="~/R/lib")
+    \end{minted}
+Select a mirror (e.g., \texttt{USA (TN)}) and the package should install.
+  \item Load the library:
+    \begin{minted}{R}
+    library("mda")
+    \end{minted}
+\end{enumerate}
+Repeat the last two steps to install and load the \texttt{randomForest} package.
+
+(Note that you can put the \texttt{module load} command and/or definition of \texttt{R\_LIBS} in your \texttt{.bashrc} file so that you do not have to type them every time you log in or start a job.)
+
+\section{Parallel R}
+R programmers can leverage parallel computing via a number of packages. See, for example, the page \url{https://cran.r-project.org/view=HighPerformanceComputing} for a description of options. Here we will focus on just two:
+\begin{itemize}
+    \item \texttt{parallel} for embarrassingly parallel tasks
+    \item \texttt{pbdR} for more complex parallel workloads
+\end{itemize}
+
+In each case, we will use as an example the approximation of $\pi$ via Monte Carlo sampling. The idea is based on the fact that the ratio of the area of the unit circle to the area of the unit square is $\frac{\pi}{4}$. Then we can
+\begin{enumerate}
+  \item Randomly pick $s$ points in the unit square
+  \item Count the number $c$ in the unit circle
+  \item Then $\pi \approx 4 \frac{c}{s}$
+\end{enumerate}
+This algorithm is implemented as an R function in Listing \ref{pi.list}; see also Figure \ref{pi.plot.fig}.
+  
+\begin{listing}[ht]
+\inputminted{R}{code/L22/mcpi.r}
+\caption{R function that uses \texttt{apply()} to compute $\pi$ via random draws from the unit square}
+\label{pi.list}
+\end{listing}
+
+\subsection{\texttt{parallel} Package}
+The \texttt{parallel} package\footnote{\url{https://cran.r-project.org/package=parallel}} provides functionality for \textit{embarrassingly parallel} tasks, such as:
+    \begin{itemize}
+      \item Running the same analysis on multiple datasets
+      \item Running multiple copies of the same random process, e.g., Monte Carlo simulations
+    \end{itemize}
+The package is available in standard R installations and builds on work in the \texttt{snow}\footnote{\url{https://cran.r-project.org/package=snow}} and \texttt{multicore} packages.
+
+Earlier sections covered the various \texttt{apply} functions that R provides for iterating over arrays. The \texttt{parallel} package provides parallelized versions that will break up the iterations across multiple processes. The user must set up a cluster -- a set of R processes across which the work will be divided -- before using them:
+\begin{minted}{R}
+    library(parallel)
+    cl <- makeCluster(ncores)  #set up parallel processes
+    parLapply(cl, ...)         #parallel lapply on cluster
+    stopCluster(cl)            #close down processes
+\end{minted}
+
+Listing \ref{pi.parrapply.list} shows an R program that uses the \texttt{parRapply()} (parallel row apply) function from the \texttt{parallel} package to parallelize the $\pi$ approximation algorithm in \ref{pi.list}. Note that in this implementation the array of $(x,y)$ points is generated ahead of time, the cluster is set up, \texttt{parRapply()} is used to check whether points are in the unit circle, and then the cluster is shut back down.
+\begin{listing}[ht]
+\inputminted{R}{code/L22/mcpi_parallel_apply.r}
+\caption{R function that uses \texttt{parRapply()} to compute $\pi$ in parallel.}
+\label{pi.parrapply.list}
+\end{listing}
+
+The package also provides the simpler \texttt{mclapply()}, which creates a pool of workers before doing \texttt{apply}. Setting up and shutting down the parallel processes is expensive, so this should only be used when a single computation is to be done in parallel. This functionality is not available on Windows.
+\begin{minted}{R}
+    library(parallel)
+    mclapply(..., mc.cores=ncores)
+\end{minted}
+
+Listing \ref{pi.mclapply.list} shows an R program that uses the \texttt{mclapply()} function from the \texttt{parallel} package to parallelize the $\pi$ approximation algorithm in \ref{pi.list}. Note that this implementation simply imports the function from \ref{pi.list} and calls it on each of the parallel processes. Thus, each process independently approximates $\pi$: generates the $(x,y)$ points, checks whether points are in the unit circle, and then takes the average. The master process is returned a list of approximate $\pi$ values, which it then uses \texttt{unlist()} to convert into a vector, and then takes the average of to approximate $\pi$.
+\begin{listing}[ht]
+\inputminted{R}{code/L22/mcpi_parallel_apply.r}
+\caption{R function that uses \texttt{mclapply()} to compute $\pi$ in parallel.}
+\label{pi.mclapply.list}
+\end{listing}
+
+
+\subsection{\texttt{pbdMPI} Package}
+R also has packages that provide more complex parallel capabilities. The \texttt{Rmpi} package\footnote{\url{https://cran.r-project.org/package=Rmpi}}, for example, provides wrappers for standard MPI functions and is used in many parallel R applications. Here we will focus on the \texttt{pbdMPI} package,\footnote{\url{https://cran.r-project.org/package=pbdMPI}} which provides similar functionality in a simpler syntax that has been tested on very large clusters. \texttt{pbdMPI} is part of the larger \texttt{pbdR} (``Programming with Big Data in R'') ecosystem,\footnote{\url{https://pbdr.org/}} which provides a number of packages for using R on HPC resources:
+\begin{itemize}
+%    \item pbdMPI: MPI interface (SPMD-style)
+    \item Distributed Linear Algebra and Statistics (pbdSLAP, pbdBASE, pbdDMAT)
+    \item pbdNCDF4: Interface to NetCDF4 file formats
+    \item Profiling: pbdPROF, pbdPAPI, hpcvis
+    \item pbdML: Machine learning
+\end{itemize}
+
+A basic \texttt{pbdMPI} program looks like (a simpler version of) a basic MPI program that you might write in C:
+\begin{minted}{R}
+    library(pbdMPI, quiet = TRUE)
+    init()
+    #do stuff
+    finalize()
+\end{minted}
+
+Listing \ref{hello.pbdr.list} shows an implementation of `Hello World'' for \texttt{pbdMPI}. It can be run like a standard MPI program:
+\begin{minted}{bash}
+    mpiexec -np 8 Rscript --vanilla hello_pbdr.r
+\end{minted}
+
+\begin{listing}[ht]
+\inputminted{R}{code/L22/hello_pbdr.r}
+\caption{R ``Hello World'' using \texttt{pbdMPI}}
+\label{hello.pbdr.list}
+\end{listing}
+
+The internal part of the program can use the functions  \texttt{comm.rank()}, which provides the process rank, and \texttt{comm.size()}, which provides the number of processes in the communicator. \texttt{pbdMPI} provides the standard functionality that an MPI programmer might expect:
+\begin{itemize}
+\item Point to point communications:
+  \begin{itemize}
+    \item \texttt{send()}: Send a message
+    \item \texttt{recv()}: Receive a message
+    \item \texttt{sendrecv()}: Send/receive
+  \end{itemize}
+\item Collective communications:
+  \begin{itemize}
+    \item \texttt{bcast()}: Broadcast (send to all)
+    \item \texttt{reduce()}: Reduce (receive from all)
+    \item \texttt{scatter()}: Break apart and broadcast
+    \item \texttt{gather()}: Collect and assemble
+  \end{itemize}
+\end{itemize}
+
+Listing \ref{messages.pbdr.list} includes an R program to send messages in round-robin fashion: Rank 0 sends a messsage to Rank 1, Rank 1 sends a message to Rank 2, and so on. The final process sends a message to Rank 0.
+\begin{listing}[ht]
+\inputminted{R}{code/L22/messages_pbdr.r}
+\caption{R \texttt{pbdMPI} program to pass messages in round-robin fashion.}
+\label{messages.pbdr.list}
+\end{listing}
+
+Finally, Listing \ref{pi.pbdr.list} provides an implementation of an MPI version of the Monte Carlo algorithm for computing $\pi$. The program uses the original implementation from \ref{pi.list} on each process, followed by MPI Reduce to sum across ranks.
+\begin{listing}[ht]
+\inputminted{R}{code/L22/mcpi_pbdr.r}
+\caption{R program that uses the \texttt{pbdR} to compute $\pi$ by calling Listing \ref{pi.list} on multiple compute cores via MPI}
+\label{pi.pbdr.list}
+\end{listing}

@@ -1,0 +1,248 @@
+
+
+%%{\large \textbf{Introduction to Using ARC's Resources} } \\
+%%CMDA 3634: Computational Science Foundations for CMDA \\
+%%Justin Krometis, Advanced Research Computing, 28 October 2019
+%%\end{center}
+
+\minitoc
+
+\section{ARC Cascades cluster}
+Cascades is a 235-node (computer) cluster built in 2016 and expanded in 2018. Most of the nodes on Cascades have 32 cores and 128 GB memory; about 40 nodes have newer processors and Nvidia V100 GPUs and a few nodes have larger memory or older GPUs. Hardware details, policies, and instructions and examples for using Cascades are available at \url{http://www.arc.vt.edu/cascades}
+%NewRiver is a 165-node (computer) cluster built in 2015 and expanded in 2017. It includes a range of nodes, including 100 nodes each with 24 cores and 128 GB memory and 39 nodes each with 28 cores and 2 NVIDIA P100 GPUs. Hardware details, policies, and instructions and examples for using NewRiver are available at \url{http://www.arc.vt.edu/cascades}
+
+Descriptions and instructions for other ARC clusters are available at: \url{http://www.arc.vt.edu/computing}
+
+\section{Login}
+
+As with many contemporary servers it is necessary to use the \texttt{ssh} secure shell client approach to login to the Cascade cluster. This command line tool allows you to create a secure Terminal session between your laptop and the cluster login node. Once a \texttt{ssh} session is initiated the commands that you type into the terminal that launched the session on your laptop will be forwarded to the Cascades cluster. 
+
+To start using \texttt{ssh} you first need to register the public key that you generated for password-free access to your Git repository on \href{code.vt.edu}{code.vt.edu}. The instructions follow.
+
+\subsection{SSH Keys}
+ARC's clusters are subject to two-factor authentication; traditional login requires being very quick with your second factor (typically using the Duo app). In this section, we will set up SSH keypairs, which are often an easier alternative. (See also \url{https://www.arc.vt.edu/2fa/#keys}.)
+\begin{enumerate}
+  \item Go to Open OnDemand (\url{https://ondemand.arc.vt.edu}) and log in (with two-factor) as you would for, e.g., \url{https://onecampus.vt.edu}.
+  \item Select Clusters $\to$ Cascades Shell Access. You should now be given a command line interface on the Cascades cluster.
+  \item In a separate browser window, go to \url{https://code.vt.edu/profile/keys}, scroll to the bottom, click on your existing key, and copy the contents (make sure that you get the whole thing, starting with \texttt{ssh}).
+  \item Go back to the window where you are logged into Cascades and add the public key to your \texttt{authorized\_keys}:
+    \begin{enumerate}
+      \item Open your list of authorized keys:
+        \myvbox[mytermbg]{vim ~/.ssh/authorized\_keys }
+      \item Hit \texttt{G} to go to the bottom and \texttt{o} to make a new line
+      \item Hit \texttt{i} to enter insert mode
+      \item Paste in the new key (often right clicking will let you hit paste)
+      \item Hit Escape to exit insert mode
+      \item Save and exit with \texttt{:wq}
+    \end{enumerate}
+  \item Set the right permissions on \texttt{authorized\_keys}:
+        \myvbox[mytermbg]{chmod 600 ~/.ssh/authorized\_keys}
+  \item Now open a terminal session from your laptop and try logging into Cascades without Open OnDemand:
+        \myvbox[mytermbg]{ssh YOURPID@cascades2.arc.vt.edu}
+    You should not need to enter a password or Duo authenticate.
+\end{enumerate}
+
+\subsection{Enabling Access to Git Repo}
+To enable access to your \url{https://code.vt.edu} repository, add your ARC SSH key to your profile:
+\begin{enumerate}
+  \item Print out your ARC public key:
+  \myvbox[mytermbg]{
+  cat \mytilde{}/.ssh/id\_rsa.pub
+  }
+  \item Go to \url{https://code.vt.edu/profile/keys}, add the contents of the key that you printed out in the previous step, give it a name, and click ``Add Key''
+  \item From Cascades, type the following to clone the repo, where \texttt{[PID]/cmda3634} is the path to your personal repo for the class: 
+  \myvbox[mytermbg]{
+    git clone git@code.vt.edu:[PID]/cmda3634.git 
+  }
+\end{enumerate}
+
+\section{Getting Files}
+To do computations on ARC's resources, you need to migrate the files that you need to it:
+\begin{itemize}
+  \item You can download files from the internet with \texttt{wget}, e.g.
+    \myvbox[mytermbg]{
+    wget https://github.com/libocca/occa/archive/master.zip
+    }
+  \item You can clone git repositories, e.g.
+    \myvbox[mytermbg]{
+    git clone git@code.vt.edu:path/repo.git
+    }
+  \item You can copy files from your computer to ARC clusters (or back), with \texttt{scp} or \texttt{rsync}, e.g.
+    \myvbox[mytermbg]{
+    scp makefile YOURPID@cascades2.arc.vt.edu:
+    }
+\end{itemize}
+Some key files for this class have been placed in a central location and can be copied to your home directory as follows:
+\myvbox[mytermbg]{
+  cp -r /home/TRAINING/cmda3634 .
+}
+% You may also want to clone the repo for your class code, e.g.,
+% %\myvbox[mytermbg]{
+% %git clone https://github.com/tcew/CMDA3634FA18
+% %}
+% \myvbox[mytermbg]{
+%   git clone git@code.vt.edu:path/repo.git
+% }
+
+\section{Key Terminology}
+\begin{enumerate}
+  \item \textbf{Node}: An individual computer.
+  \item \textbf{Queue}: A list of jobs to be run on the cluster. Most jobs go into \texttt{normal\_q} but \texttt{dev\_q} can be used for debugging short or small jobs. Some specialty hardware (e.g., V100 nodes on Cascades) are also separated out by partition.
+  \item \textbf{Allocation}: A ``bank account'' of system units (cores $\times$ hours) that you can deduct your job from. Must be requested by a faculty member. An allocation called \texttt{cmda3634} has been created for this class.
+\end{enumerate}
+
+\section{Software Stack}
+Software on ARC clusters are managed with a \href{http://www.arc.vt.edu/modules}{module environment}. There are three layers of modules:
+\begin{enumerate}
+	\item Base: Require neither a compiler or MPI stack.
+	\item Compiler: Require that a compiler (e.g. \texttt{gcc} or \texttt{intel}) be loaded.
+	\item MPI: Require that an MPI stack (e.g. \texttt{mvapich2}, \texttt{openmpi}, or \texttt{impi}) be loaded.
+\end{enumerate}
+Some key commands include:
+\begin{table}[h]
+\centering
+\begin{tabular}{ c | c | c } \hline
+   Command & Example & Meaning \\
+  \hline    \hline
+  \texttt{module list} & \texttt{module list} & List the modules currently loaded \\
+  \texttt{module avail} & \texttt{module avail} & List modules that are available to be loaded \\
+  \texttt{module show} & \texttt{module show cuda} & Print information about a module \\
+  \texttt{module load} & \texttt{module load cuda} & Load a module \\
+  \texttt{module unload} & \texttt{module unload cuda} & Unload a module \\
+  \texttt{module spider} & \texttt{module spider cuda} & Search for a module \\
+  \texttt{module swap} & \texttt{module swap intel gcc} & Replace one module with another \& reload dependencies \\
+  \texttt{module purge} & \texttt{module purge} & Unload all modules \\ \hline
+\end{tabular}
+\end{table}
+
+To load MPI on Cascades, you might use:
+\myvbox[mytermbg]{module purge \\
+module load gcc \\
+module load openmpi
+}
+
+\section{Submitting a Job}
+Before you can do computationally-intensive work on an ARC cluster, you need to move from the login node (a computer where lots of people may be doing basic tasks) to a compute node (a computer dedicated to computing). Cascades is a shared resource, so this is done by submitting a job to a schedule, a piece of software that tries to balance many users' needs. Note: This sometimes means that you will have to wait until the resources that you need are available (i.e. until other users are done)!
+
+However, I have reserved resources for this hands on session so you should not have to wait during the lecture today.
+
+There are two main types of jobs: interactive and batch.
+
+\subsection{Interactive Job}
+You can use an interactive job to get a short(-ish) interactive session on a compute node. To do this, use the development partition (\texttt{dev\_q}) as follows (here we request one node for 30 minutes with the allocation \texttt{cmda3634} created for this class):
+%\myvbox[mytermbg]{
+%interact -l nodes=1:ppn=5 -l walltime=1:00:00 -ACMDA3634
+%}
+%\myvbox[mytermbg]{
+%salloc -n 4 -p dev_q -t1:00:00 -Acmda3634
+%}
+\myvbox[mytermbg]{interact -n 4 -p dev\_q -t 0:30:00 -A cmda3634
+}
+(Actually, the walltime and partition are the default, so simply \texttt{interact -n 4 -A cmda3634} would also suffice.) 
+
+Once the job starts, you will get a session on a new computer, e.g. \texttt{ca010}. Now you can do computationally-intensive work without interfering with other users. First, let's look at the environment:
+\myvbox[mytermbg]{env | grep SLURM}
+Try running an OpenMP program:
+\myvbox[mytermbg]{module purge; module load gcc \\ 
+gcc -fopenmp -o omp\_hello omp\_hello.c \\
+export OMP\_NUM\_THREADS=2 \\
+./omp\_hello
+}
+How do the results differ when we do this?
+\myvbox[mytermbg]{export OMP\_NUM\_THREADS=\$SLURM\_NTASKS\\
+echo \$OMP\_NUM\_THREADS\\
+./omp\_hello
+}
+Try running an MPI program:
+\myvbox[mytermbg]{module purge; module load gcc openmpi \\
+mpicc mpi\_hello.c -o mpi\_hello \\
+mpiexec -n 2 ./mpi\_hello \\
+mpiexec -n \$SLURM\_NTASKS ./mpi\_hello \\
+mpiexec ./mpi\_hello
+}
+
+
+%% ------------- BATCH JOB ---------------- %%
+\subsection{Batch Job}
+Batch jobs are used to launch non-interactive sessions to run larger and longer computationally-intensive programs. These jobs are typically submitted via a \emph{submission script}. The submission script has two main parts:
+\begin{enumerate}
+	\item The header, which describes the job, e.g. how many resources it needs and for how long. These lines begin with \texttt{\#SBATCH}.
+	\item The body, which describes what to do once those resources have been obtained.
+\end{enumerate}
+Here is an example submission script for submitting a four-core job for one hour to the production partition (\texttt{normal\_q}), and to run \texttt{omp\_hello} on those resources:
+
+%\lstinputlisting[language=bash]{ca_sample.sh}
+\begin{minted}{bash}
+#!/bin/bash
+#SBATCH -n 4
+#SBATCH -t 01:00:00
+#SBATCH -p normal_q
+#SBATCH -A cmda3634
+
+#Change to the directory from which the job was submitted
+cd $SLURM_SUBMIT_DIR
+
+#Load modules
+module purge; module load gcc
+
+#May not be necessary if the program is already built
+gcc -fopenmp -o omp_hello omp_hello.c
+
+#Run
+export OMP_NUM_THREADS=$SLURM_NTASKS
+echo "Run omp_hello with $OMP_NUM_THREADS threads"
+./omp_hello
+
+exit;
+\end{minted}
+
+
+%Note that we also do postprocessing with \texttt{nr\_sample\_collect} as part of the job.
+
+\subsubsection{Submitting and Checking a Batch Job}
+This script can be submitted to the scheduler as follows:
+\myvbox[mytermbg]{sbatch ca\_sample.sh}
+
+This will return your job name of the form
+
+\myvbox[mytermbg]{Submitted batch job 21632}
+
+Here \texttt{21632} is the job number. Once a job is submitted to a partition (sometimes called a queue), it will wait until requested resources are available within that partition, and will then run if eligible. Eligibility to run is influenced by the resource policies in effect for the partition.
+
+You can view all of your jobs using the \texttt{squeue} command:
+\myvbox[mytermbg]{squeue -u \$USER}
+To view information about a particular job, you can use one of
+\myvbox[mytermbg]{squeue --job=21632 \\
+scontrol show job 21632}
+
+%To check resource usage on the nodes available to a running job, use:
+%\myvbox[mytermbg]{
+%jobload 21632
+%}
+
+When your job has finished running, any outputs to stdout or stderr will be placed in a file called \texttt{slurm-21632.out}. You can view them with one of, for example:
+\myvbox[mytermbg]{cat slurm-21632.out \\
+more slurm-21632.out\\
+less slurm-21632.out\\
+vim slurm-21632.out
+}
+
+\subsection{Other Resource Requests}
+In the above examples, we requested 4 cores with \texttt{-n 4}. There are other ways to request resources:
+\myvbox[mytermbg]{
+-n 4                     \#4 cores \\
+-N 1 --ntasks-per-node=4 \#4 cores on one node\\
+-N 1 --exclusive         \#One whole node
+}
+
+
+%% ------------------ REFERENCES ------------------ %%
+\section{References}
+\begin{itemize}
+	\item \url{https://www.arc.vt.edu/computing} describes ARC's hardware, usage policies, and software, and provides some step-by-step examples
+	\item \url{https://www.arc.vt.edu/storage} describes ARC's storage systems
+	\item \url{https://www.arc.vt.edu/software} describes software installed on ARC's systems
+	\item \url{https://www.arc.vt.edu/modules} describes how to use ARC's software modules
+	\item \url{https://www.arc.vt.edu/slurm-scheduler-interaction/} describes how to interact with the scheduler - submit and check jobs, view output, etc.
+	\item \url{https://www.arc.vt.edu/faq} provides answers to some frequently asked questions
+\end{itemize}

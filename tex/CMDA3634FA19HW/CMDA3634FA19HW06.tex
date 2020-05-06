@@ -1,0 +1,84 @@
+In this assignment you will write C code that will support your k-means algorithm.
+\subsection*{Grant permission}
+The GitLab settings we originally asked you to use will not allow us to push the files you need.
+If you have not done so already, please do the following as soon as possible:
+\begin{enumerate}
+    \item Go to \href{http://code.vt.edu}{code.vt.edu}.
+    \item Select your cmda3634 project.
+    \item In the left column, navigate to ``Settings'' then ``Members.''
+    \item At the bottom of the page, use the drop-down menus to change the permissions of \texttt{jonpbak} and \texttt{tcew} to ``Maintainer.''
+\end{enumerate}
+\subsection*{Implementation}
+\begin{tcolorbox}[width=\textwidth,colback=green]
+To helps us find and test your code, your C file should be \texttt{HW06/average.c} (a file named \texttt{average.c} in a directory named \texttt{HW06}).
+\end{tcolorbox}
+Implement the following as a C program:
+\begin{enumerate}
+    \item[Q1:] (5pts) Accepts a command line argument to specify the name of a file to open for reading.
+    
+    For instance if your executable file is named \texttt{go}, then the command
+    \begin{tsession}{mytermbg}
+    \begin{verbatim}
+./go bah.dat\end{verbatim}
+    \end{tsession}
+    should open the file named \texttt{bah.dat} to read.
+   
+    \item[Q2:] (10pts) Reads numerical two-dimensional data from the file.
+    The file will be formatted as follows:
+    \begin{itemize}
+        \item \underline{Line 1}: A text header that should be read but ignored by your program.
+        \item \underline{Line 2}: A number telling you how many lines of data there are.
+        \item \underline{Line 3}: A text header that should be read but ignored by your program.
+        \item \underline{All other lines}: The data, where each line consists of two decimal numbers with one space between them.
+    \end{itemize}
+    For example, the file may look like this:
+    \begin{verbatim}
+        <Number of data lines>
+        3
+        <Data>
+        0.12345 6.78910
+        3.14159 -2.0002
+        1.41421 0.99999
+    \end{verbatim}
+    \item[Q3:] (5pts) Stores the data from the file into a data structure specified by a \texttt{struct} of your design. 
+    \item[Q4:] (5pts) Finds the mean (average) of the data (column-wise).
+    For the example file above, the mean is
+    \begin{verbatim}
+        1.55975 1.92963
+    \end{verbatim}
+    \item[Q5:] (5pts) Displays the mean with 5 significant digits.
+\end{enumerate}
+
+\subsection*{Testing}
+Instructors will use Git to push several files into a directory called \texttt{HW06} in your repository on \href{http://code.vt.edu}{code.vt.edu}.
+You will need to use \texttt{git pull} to put these files in your local repository.
+
+The files are as follows
+
+% https://code.vt.edu/tcew/cmda3634/blob/master/L09/arrayA.dat
+
+\begin{itemize}
+    \item \texttt{anwers.txt}: The correct means of \texttt{easy.dat} and \texttt{debug.dat}.
+    \item \texttt{easy.dat}: A data set whose average you should be able to find in your head.
+    \item \texttt{debug.dat}: A large data set for debugging your algorithm.
+    You will be given the correct mean of this data (in \texttt{answers.txt}) so that you can make sure your algorithm works.
+    \item \texttt{test.dat}: A large for grading your algorithm.
+    You will not be given the mean for this data set.
+    \item[Q6:] (10pts) Run your program with each of the \texttt{.dat} files as input.
+    This means that you will run your program three times and record the results and include them in your report.  Note: you are not allowed to change the source file between different runs.
+\end{itemize}
+
+\subsection*{Submission}
+\begin{itemize}
+    \item[Q7:] (5pts) Include the following in your \LaTeX{} typeset report:
+    \begin{enumerate}
+        \item Your C code formatted using the \texttt{minted} environment.
+        \item The text output of your computer program using a \texttt{verbatim} environment (not a screenshot). Include the results of the runs for all three data files.
+    \end{enumerate}
+ 
+    Submit your assignment as follows:
+    \begin{itemize}
+    \item Upload your PDF and tex files to Canvas.
+    \item Submit the C source file by pushing them to your git repository on \href{http://code.vt.edu}{code.vt.edu}.
+    \end{itemize}
+\end{itemize}

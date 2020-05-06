@@ -1,0 +1,472 @@
+\chapterauthor{Tim Warburton}
+
+\epigraph{C is quirky, flawed, and an enormous success}{Dennis M. Ritchie, \\The Development of the C Language.}
+
+\minitoc
+
+\section{Background}
+{\bf Q}: What is C ? \\
+{\bf A}: A concise programming language that is designed to run on any device with a central processing unit. C programs run on everything from embedded microprocessor controllers in machinery,  network routers, and even is lurking in source code of many Math libraries and tools. 
+
+{\bf Q}: Why learn C ? \\
+{\bf A}: Once you understand C then the derived languages are simple to pick up. Derived languages include Java, C++, C\#, Objective C, and Python. For a more comprehensive list see \href{https://en.wikipedia.org/wiki/List_of_C-family_programming_languages}{C family wiki}.
+
+{\bf Q}: Why use C ? \\
+{\bf A}: Pointers. These are a programming device that give the programmer direct access to data in memory and this will be critical in building high performance codes.
+
+{\bf Q}: No really, why use C? \\
+{\bf A}: Later in this course we will start parallel programming using the Message Passing Interface (MPI). This is primarily a C based library for sending messages between multiple instances of a running program. There are Java bindings for MPI \href{https://www.open-mpi.org/faq/?category=java}{here}. However, you would end up programming Java in a C like fashion anyway and may miss some important details.
+
+{\bf Q}: Seriously, why C ? \\
+{\bf A}: Performance, performance, performance. As a lower level language that is not strongly sandboxed it is possible to squeeze maximum performance when using C.
+
+{\bf Q}: Why did we have to learn Java ?\\
+{\bf A}: Good question.
+
+{\bf Q}: All the cool programmers are using [INSERT FASHIONABLE PROGRAMMING LANGUAGE ]\\
+
+\boximagelabel{figures/L06/tiobeIndex082519.png}{Tiobe programming index chart as of 08/25/19. See: \href{http://tiobe.com}{http://tiobe.com} for the latest index charts}{tiobe.fig}
+
+{\bf A}: Actually, check out the Tiobe programming language index in Figure \ref{tiobe.fig}. The folks at Tiobe track the popularity of different programming languages over time. As of 08/25/19 C was number two in their chart and seems to be catching up with Java.
+
+{\bf Q}: What happened to C++ ?\\
+{\bf A}: C++ is an incredibly sophisticated and powerful programming language that has many useful applications. However, over time it has become progressively more complicated to understand the whole language and more difficult to develop and manage large C++ projects. This may have contributed to the decline in popularity.
+
+\section{Installing the GNU compiler collection}
+
+To install the GNU C compiler use the following package from the Terminal 
+
+\myvbox[mytermbg]{sudo apt-get install gcc}
+
+
+\section{Hello world, C edition}
+
+Writing a ``hello world'' program is a ritual that programmers perform when picking up a new programming language to help familiarize themselves with new syntax and general basics. It is so well established in programming practice that there are even web pages that catalog hello world programs in almost every known programming languages. See \href{http://helloworldcollection.de/}{http://helloworldcollection.de/} for a very comprehensive collection of hello world programs in a large number of different languages and their variations.
+
+So without any more ado, the following program will print a Hello world message on the terminal.
+
+\begin{listing}[ht]
+\inputminted{c}{code/L06/helloWorld.c}
+\caption{Hello world example in C}
+\label{helloWorld.list}
+\end{listing}
+
+\FloatBarrier
+
+It encapsulates some elementary syntax that we highlight in this list:
+
+\begin{itemize}
+    \item {\texttt{/* ... */} is a comment that should be ignored when the source code is converted into a program. Anything between the \texttt{*} symbols is ignored, but can be used by the programmer to leave a message to future readers of the code to help understand what the code does. }
+    \item \texttt{\#include <stdio.h>} is not actually C code! It is in fact an instruction to the C preprocessor that initially processes the source code. It instructs the preprocessor to include the \texttt{stdio.h} header file into the program it is building from the source code. The header file includes information about the call signature for functions in the standard input-output library. We need this because of the \texttt{printf} statement later in the code.
+    \item \texttt{int main(int argc, char **argv)} describes the input and output signature of the \texttt{main} function. This function has a special status since every C program must include one, and only one, \texttt{main} function. When the OS executes this program it will give you the programmer control of the execution of instructions by ``entering'' the \texttt{main} function. We will dwell on what the notation around \texttt{main} means in later lectures.
+    \item \texttt{ \{ ... \} } subtly surrounds everything that happens in the body of the \texttt{main} function. These brace characters are critical as they delimit all instructions associated with the \texttt{main} function. Fail to wrap the contents of a functions with \text{ \{ ... \} } and confusion will ensue.
+    \item \verb|printf("Hello World\n")| is an instruction to ``call'' the \texttt{printf} function and ``pass'' in a string of characters that should be output to the terminal. [ To be precise, a piece of memory is reserved for a string literal and the location in memory of the first character of the string is passed to the \texttt{printf} function as a pointer which we will discuss in detail later]. A curious fact about the \texttt{printf} function is that it is not part of the core C language because not every device that can run C actually has the standard output for printing text to a terminal. That is why we had to include the standard input-output header that describes the \texttt{printf} function signature. When compile the program later, the compiler will automatically add in the definition of the \texttt{printf} function as it builds the executable.
+    \item \texttt{;} lurks after the \texttt{printf} function call. I bet you almost didn't see it ! The semi-colon plays a critical role in C because in general C is rather indifferent to white space so a command could possibly be spread over multiple lines. The semi-colon is used to terminate a statement. If you neglect to terminate a statement with a semi-colon then all manner of confusion may ensue.
+    \item \texttt{return 0;} at the end of the function returns the zero numerical value to the terminal. In general functions can return a value to their call site, and in this case the terminal is the call site.
+\end{itemize}
+
+In that one program we have revealed two key aspects of C syntax that bare repeating: statements are terminated with semi-colons and the contents of a function are wrapped with braces. Forgetting either of these things will yield weird compiler errors. 
+
+Which brings us to the issue of how to create the file and how to execute the hello world program. Fortunately we can use \texttt{emacs} to edit a text file. 
+
+{\bf Note \#1}: you should call the file \texttt{helloWorld.c} and that the \texttt{.c} file extension is important !
+
+{\bf Note \#2}: avoid writing all your files to your Ubuntu home directory. I recommend creating a directory for each lecture
+
+{\bf Note \#3}: remember that you can launch \texttt{emacs} to create the file. 
+
+Putting these together you can get started with 
+
+\myvbox[mytermbg]{\# make a directory for this lecture \\ mkdir \mytilde/course/L06 \\ \\ \# change to that directory \\ cd \mytilde/course/L06 \\ \\ \# launch emacs to edit the file, doing so in the background using ampersand \\ emacs helloWorld.c \& }
+
+I snuck in an extra trick when you launch \texttt{emacs}. That ampersand \texttt{\&} character tells the Terminal that you want to run the \texttt{emacs} command in the background. This is okay since \texttt{emacs} will run in a separate window. The \texttt{emacs} window should appear and you should get a new prompt in the Terminal window.
+
+Go ahead and type in the hello world program. You can save by clicking on the icon of a disk+arrow+Save. 
+
+Go back to the terminal and use \texttt{ls} to verify that the source file was actually saved. 
+
+At this point you have only created the source file, you have not created an executable program. It is necessary to use a compiler to convert the ASCII source code (\texttt{helloWorld.c}) into a binary executable that the OS can understand. For this class we will use the C compiler from the GNU compiler collection. This may not be installed by default so you should go ahead and make sure that that it is installed using \texttt{apt-get}
+
+\myvbox[mytermbg]{sudo apt-get update \\ sudo apt-get install gcc}
+
+Now you should be all set to compile the hello world program. You can invoke the compiler with 
+
+\myvbox[mytermbg]{gcc -o helloWorld helloWorld.c}
+
+The \texttt{-o helloWorld} option instructs the compiler to output the compiled program to a file named helloWorld. The last argument is just the name of the C source file you want to compile.
+
+Assuming that you did not get any error messages from the \texttt{gcc} compiler you can run your program with
+
+\myvbox[mytermbg]{./helloWorld}
+
+{\bf Note \#1}: the Terminal is case sensitive. Note the W is capitalized (assuming you called your program helloWorld)
+
+{\bf Note \#2}: we added a \texttt{./} to the executable name because the Terminal needs to know where the executable is located. In general \texttt{./} on its own is short hand for the present working directory.
+
+\boximage{figures/L06/helloWorldSuccess.png}{Output when you successfully run the hello world program.}
+
+If you got this far then congratulations you have literally added new functionality to your Ubuntu Terminal !
+
+\newpage
+\section{Note on terminology}
+\label{dataSizes.sec}
+We will start throwing terms around like bit, byte, kilobyte, megabyte, \ldots when referring to quantities of data. The smallest quantity of data is one bit. A bit of data can take the value zero or the value one. There are four bits in one nibble \footnote{You will hear the term ``bit'' a lot. The ``nibble'' (four bits) is used much less frequently.}. There are eight bits in a ``byte''. The term byte is very commonly used. For instance in C the smallest variable size that can be used is one byte used to represent a \texttt{char} character variable. The byte became commonly used as a base data size when the first 8-bit computers were released and adopted for home computing in the late 70s and early 80s.
+
+The following table summarizes commonly used terms for data quantities. Notice the progression in powers of a thousand. 
+
+\begin{table}[htbp!]
+    \centering
+    \begin{tabular}{c|c|c|c} \hline
+    Number of bytes & Notation & Name & Example size  \\  \hline
+    1    &  B   & byte    & text character \\
+$1000$   &	kB	& kilobyte & e-mail\\
+$1000^2$ &	MB	& megabyte & image\\
+$1000^3$ &	GB	& gigabyte & movie\\
+$1000^4$ &	TB	& terabyte & hard drive \\
+$1000^5$ &	PB	& petabyte & server storage\\
+$1000^6$ &	EB	& exabyte & human words spoken\\
+$1000^7$ &	ZB	& zettabyte & ?\\
+$1000^8$ &	YB	& yottabyte & ? \\ \hline
+    \end{tabular}
+    \caption{Base 10 data quantity naming convention (see \href{https://en.wikipedia.org/wiki/Orders_of_magnitude_(data)}{wiki} for more info).}
+    \label{base10Bytes.tab}
+\end{table}
+
+There is a nice article discussing these quantities \href{https://pradeepedwin.wordpress.com/mb-gb-tb-pb-eb-zb-yb-bb/}{here}.
+
+\section{Variables}
+
+\myvbox[green]{Variable: a name that we attach to a value stored in computer memory.}
+
+\subsection{Integer variable type: \texttt{int}}
+
+This C command instructs the compiler to set aside a certain number of bits of  memory that we can access through a variable named \texttt{i}
+\mint{c}|int i;|
+\noindent{\bf Note \#1}: because C is a strongly typed language we have to associate a type to the variable when it is created, in this case ``\texttt{int}''
+
+{\bf Note \#2}: \texttt{int} is short hand for a finite integer represented by a number with (typically) 32 (binary) bits.
+
+{\bf Note \#3}: the C language specification does not describe what the initial value of a variable will be when it is created. We cannot assume for instance that it will be set to zero when created. 
+
+For instance if we decide to assign a starting value of 3 to the variable we must explicitly do so explicitly with
+
+\mint{c}|int i = 3;|
+or 
+\begin{minted}{c}
+int i; /* create variable named i */
+i=3;   /* assign value 3 to i */
+\end{minted}
+
+%If you are interested in the details of how the variable \texttt{i} is represented in memory I recommend reading the detailed wiki post \href{https://en.wikipedia.org/wiki/Single-precision_floating-point_format}{here}.
+
+In brief the integer \texttt{int} type is encoded into (typically) 32 bits. Echoing decimal representation the 32 bits are presented with sign bit leftmost, and the actual binary digits running left to right with the most significant digit to the left. Some examples
+
+\begin{verbatim}
+         0 = 00000000000000000000000000000000
+         2 = 00000000000000000000000000000010
+        10 = 00000000000000000000000000001010
+        42 = 00000000000000000000000000101010
+       170 = 00000000000000000000000010101010
+       682 = 00000000000000000000001010101010
+      2730 = 00000000000000000000101010101010
+     10922 = 00000000000000000010101010101010
+     43690 = 00000000000000001010101010101010
+    174762 = 00000000000000101010101010101010
+    699050 = 00000000000010101010101010101010
+   2796202 = 00000000001010101010101010101010
+  11184810 = 00000000101010101010101010101010
+  44739242 = 00000010101010101010101010101010
+ 178956970 = 00001010101010101010101010101010
+ 715827882 = 00101010101010101010101010101010
+ \end{verbatim}
+ where I have added $2^{2n}$ to a running accumulator for $n=1:15$. Here is the sequence where I subtracted instead of adding
+ \begin{verbatim}
+         0 = 00000000000000000000000000000000
+        -2 = 11111111111111111111111111111110
+       -10 = 11111111111111111111111111110110
+       -42 = 11111111111111111111111111010110
+      -170 = 11111111111111111111111101010110
+      -682 = 11111111111111111111110101010110
+     -2730 = 11111111111111111111010101010110
+    -10922 = 11111111111111111101010101010110
+    -43690 = 11111111111111110101010101010110
+   -174762 = 11111111111111010101010101010110
+   -699050 = 11111111111101010101010101010110
+  -2796202 = 11111111110101010101010101010110
+ -11184810 = 11111111010101010101010101010110
+ -44739242 = 11111101010101010101010101010110
+-178956970 = 11110101010101010101010101010110
+-715827882 = 11010101010101010101010101010110
+ \end{verbatim}
+ There is a fun number base converter \href{https://www.binaryconvert.com/}{here} and discussion of integer representation with two's complement encoding \href{https://en.wikipedia.org/wiki/Two%27s_complement}{here}. 
+ 
+ In brief: given an $N$ digit two's complement representation $\{b_n\}_{n=0}^{n=N-1}$ then we can reconstruct the original integer $a$ with 
+ 
+ \[
+ a = -b_{N-1}2^{N-1} + \sum_{n=0}^{n=N-2} b_n 2^n.
+ \]
+ We give the formula here for completeness and it is important for fine grain understanding of integer representation. However, if it doesn't quite gel with your understanding of integers and how they might be stored you can come back to this later.
+ 
+{\bf Note}: keep in mind that the C standard does not actually specify how many bits should be used to represent an \texttt{int}. This harks back to the day when the natural word length for an integer was 16 bits, because that is what was supported in computers of the time equipped with 16 bit hardware registers \footnote{a register is an on-chip physical data store} and 16 bit data pathways. These days it is highly likely but not absolutely certain that an \texttt{int} will be represented with 32 bits reflecting common register size and data pathways of the 1990s. You can actually find out for a given compiler on a given system how many bytes (groups of 8 bits) are used to represent an \texttt{int} using the \texttt{sizeof} macro demonstrated here
+
+\mint{c}|printf("An int takes %d bytes which is %d bits\n", sizeof(int), 8*sizeof(int));|
+
+\subsubsection{Arithmetic integer operations}
+
+C can perform the usual arithmetic operations that you might expect including addition, subtraction, multiplication, and division. 
+
+{\bf Note}: keep in mind that \texttt{int} objects are on a finite subset of the integers so the arithmetic operations can overflow and generate say negative numbers when you add two large numbers.
+
+Here is a sequence of C programs that perform a range of arithmetic operations. What do you think the output of these programs should be ?
+
+{\bf Q1 [ yes it is a trap ]}
+\begin{minted}{c}
+int main(int argc, char **argv){
+
+  int a, b, c; /* create some integers */
+  
+  c = a+b;     /* perform integer addition */
+
+  printf("a = %d, b = %d, c = %d\n", a, b, c); /* print result */
+  
+  return 0;
+}
+\end{minted}
+
+{\bf Q2 [ not a trap ]}
+\begin{minted}{c}
+int main(int argc, char **argv){
+
+  int a = 1, b = 2, c; /* create some integers */
+  
+  c = a+b;     /* perform integer addition */
+
+  printf("a = %d, b = %d, c = %d\n", a, b, c); /* print result */
+  
+  return 0;
+}
+\end{minted}
+
+{\bf Q3 [ small trap ]}
+\begin{minted}{c}
+int main(int argc, char **argv){
+
+  int a = 1, b = 2, c; /* create some integers */
+  
+  c = a/b;     /* perform integer division */
+
+  printf("a = %d, b = %d, c = %d\n", a, b, c); /* print result */
+  
+  return 0;
+}
+\end{minted}
+
+{\bf Q4 [ nasty trap ]}
+\begin{minted}{c}
+int main(int argc, char **argv){
+
+  int a = 1, b = 0, c; /* create some integers */
+  
+  c = a/b;     /* perform integer division */
+
+  printf("a = %d, b = %d, c = %d\n", a, b, c); /* print result */
+  
+  return 0;
+}
+\end{minted}
+
+
+Answers on next page.
+
+\newpage
+{\bf A1}: this is sneaky, we did not initialize the \texttt{a} and \texttt{b} variables before performing the addition operation. Their values will be the value of whatever variables occupied their bits previously. So we cannot say with certainty what the {\bf Q1} code will output.
+
+{\bf A2}: nothing to see here. The code will output \texttt{a=1,b=2,c=3}.
+
+{\bf A3}: when the arguments to the division operator are both integers as is the case here then integer division is performed (see this \href{https://en.wikipedia.org/wiki/Division_(mathematics)#Of_integers}{wiki}). In brief when performing integer division the fractional part of the result is discarded. In this case the answer will be zero.
+
+{\bf A4}: this is an example of division by zero. Behavior is not strictly determined by the C standard. It is likely that the code will issue an exception when the division by zero happens. Careful code will try to catch such errant behavior. Bottom line: try to avoid division by zero.
+
+For fun check out this video of a mechanical calculator trying to divide by zero: \href{https://www.youtube.com/watch?v=7Kd3R_RlXgc}{video}.
+
+\subsection{Character variable type: \texttt{char}}
+In the early days of C the contemporary computers typically had at least 8 bit registers and 8 bit data pathways. Thus the smallest data size that C supports is 8 bits, also called a byte. There is an 8 bit variable type in C called a \texttt{char} which is short for character. Variables of type \texttt{char} are typically used to represent letters, numbers, and symbols in text. 
+
+In the previous section we saw that integers are represented by a two's complement bitwise encoding. The analogue for 8-bit character encoding is actually a look up table defined by the ASCII standard. An 8-bit \texttt{char} can represent numbers in binary in the range 0:255. Characters in the ASCII set are mapped to numbers in this range. For instance, the decimal numbers are mapped to the range 48:57. Capital letters are mapped to values in the range 65:90. Lower case letters map into the range 97:122. Space is 32. The whole ASCII character set is described here \href{https://www.ascii-code.com/}{https://www.ascii-code.com/}. Other descriptions are available via your favorite search engine.
+
+{\bf Exercise}: encode ``The quick brown fox Jumped over the lazy dog 5 times!'' into ASCII by hand. Reference answer on the next page.
+
+\newpage
+{\bf Exercise solution}: Being lazy I coded up a program to automatically print out the ASCII encoding of a string. The following C code outputs the ASCII encoding of a string literal
+
+\begin{minted}{c}
+#include <stdio.h>
+#include <stdlib.h>
+
+void asciiPrint(char *message){
+  int n=0;
+  while(1){ /* keep iterating the following code */
+
+    printf("char %c => ascii %d\n", message[n], (int)message[n]);
+
+    if(message[n]=='\0'){ break; } /* break if string terminator */
+
+    n=n+1; /* increment counter */
+  }
+}
+
+int main(int argc, char **argv){
+
+  asciiPrint("The quick brown fox Jumped over the lazy dog 5 times!");
+  return 0;
+}
+\end{minted}
+The string literal translation for character to ASCII code is shown here\footnote{with one deliberate error, can you spot it ?}
+\small
+\begin{multicols}{4}
+\begin{verbatim}
+char T => ascii 84
+char h => ascii 104
+char e => ascii 101
+char   => ascii 32
+char q => ascii 113
+char u => ascii 117
+char i => ascii 105
+char c => ascii 99
+char k => ascii 107
+char   => ascii 32
+char b => ascii 98
+char r => ascii 114
+char o => ascii 111
+char w => ascii 119
+char n => ascii 110
+char   => ascii 32
+char f => ascii 102
+char o => ascii 111
+char x => ascii 120
+char   => ascii 32
+char J => ascii 106
+char u => ascii 117
+char m => ascii 109
+char p => ascii 112
+char e => ascii 101
+char d => ascii 100
+char   => ascii 32
+char o => ascii 111
+char v => ascii 118
+char e => ascii 101
+char r => ascii 114
+char   => ascii 32
+char t => ascii 116
+char h => ascii 104
+char e => ascii 101
+char   => ascii 32
+char l => ascii 108
+char a => ascii 97
+char z => ascii 122
+char y => ascii 121
+char   => ascii 32
+char d => ascii 100
+char o => ascii 111
+char g => ascii 103
+char   => ascii 32
+char 5 => ascii 53
+char   => ascii 32
+char t => ascii 116
+char i => ascii 105
+char m => ascii 109
+char e => ascii 101
+char s => ascii 115
+char ! => ascii 33
+char  => ascii 0
+\end{verbatim}
+\end{multicols}
+\normalsize
+{\bf Note \#1}: even the spaces get encoded and there is also a sneaky zero ASCII code at the end of string literal that terminates the string and is invisible in the original string. This extra character even trips up seasoned C programmers.
+
+{\bf Note \#2}: there is a lot going on in the above code that we used to print out the ASCII encoding. We will see more of the constructs used in that code later in the course.
+
+Anthony Austin pointed out that the Terminal has a built in man page for whole ASCII table which you can read with
+
+\myvbox[mytermbg]{man ascii}
+
+and it outputs the table in several bases
+
+\begin{verbatim}
+ASCII(7)             BSD Miscellaneous Information Manual             ASCII(7)
+
+NAME
+     ascii -- octal, hexadecimal and decimal ASCII character sets
+...
+       0 nul    1 soh    2 stx    3 etx    4 eot    5 enq    6 ack    7 bel
+       8 bs     9 ht    10 nl    11 vt    12 np    13 cr    14 so    15 si
+      16 dle   17 dc1   18 dc2   19 dc3   20 dc4   21 nak   22 syn   23 etb
+      24 can   25 em    26 sub   27 esc   28 fs    29 gs    30 rs    31 us
+      32 sp    33  !    34  "    35  #    36  $    37  %    38  &    39  '
+      40  (    41  )    42  *    43  +    44  ,    45  -    46  .    47  /
+      48  0    49  1    50  2    51  3    52  4    53  5    54  6    55  7
+      56  8    57  9    58  :    59  ;    60  <    61  =    62  >    63  ?
+      64  @    65  A    66  B    67  C    68  D    69  E    70  F    71  G
+      72  H    73  I    74  J    75  K    76  L    77  M    78  N    79  O
+      80  P    81  Q    82  R    83  S    84  T    85  U    86  V    87  W
+      88  X    89  Y    90  Z    91  [    92  \    93  ]    94  ^    95  _
+      96  `    97  a    98  b    99  c   100  d   101  e   102  f   103  g
+     104  h   105  i   106  j   107  k   108  l   109  m   110  n   111  o
+     112  p   113  q   114  r   115  s   116  t   117  u   118  v   119  w
+     120  x   121  y   122  z   123  {   124  |   125  .   126  ~   127 del
+\end{verbatim}
+
+
+
+\subsection{Floating point number: \texttt{float}}
+
+We have seen how integers and characters are encoded in C. However, there is still an important class of numbers missing: real numbers. The C language includes support for so-called floating point numbers. These are numbers that are represented in binary with 32 or 64 bits. The floating point representation consists of three parts: the sign bit, the exponent, and the mantissa (also called the fraction).
+
+For a 32-bit floating point variable (of type \texttt{float} defined by the IEEE 754 standard: one bit is dedicated to the sign bit, 8 bits to the exponent, and the remaining 23 bits represent the fraction. For a full description of the IEEE 754 standard see \href{ 
+https://en.wikipedia.org/wiki/Single-precision_floating-point_format}{wiki}. There is a really useful diagram and description of how a real number is encoded into a \texttt{float}.
+
+\myvbox[red]{TW: FIX THIS LATER}
+
+We can apply arithmetic operations to \texttt{float} variables.  Here are some examples to ponder
+
+{\bf Q5 [ small trap ]}
+\begin{minted}{c}
+int main(int argc, char **argv){
+  float a = 1, b = 2, c=3, d, e; /* create some float variables */
+  
+  d = a/b;     /* perform floating point division */
+  e = a/c;     /* perform floating point division */
+  printf("a=%17.15f, b=%17.15f, c=%17.15f\n, d=%17.15f, e=%17.15f \n", 
+         a, b, c, d, e); /* print result with 17 significant figures */
+  return 0;
+}
+\end{minted}
+
+{\bf Q6 [ big trap ]}
+\begin{minted}{c}
+#include <stdio.h>
+
+int main(int argc, char **argv){
+  float a = 1, b = 2.e-9, c; /* create some float variables */
+
+  c = a+b;     /* perform floating point addition */
+  
+  /* print result with 17 significant figures */
+  printf("a = %17.15f, b = %17.15f, c = %17.15f\n", a, b, c);
+  return 0;
+}
+\end{minted}
+
+{\bf Note}: we specify the precision and format for printing variable values by modifying the format string passed to \texttt{printf}. In this case \texttt{\%17.15f} says print out the variable in scientific notation with 17 significant digits. Answers on the next page.
+
+\newpage
+{\bf A5}: \texttt{d=a/b} is easy since \texttt{d=a/b=1/2} is exactly representable by the floating point encoding. On the other hand \texttt{e=a/c=1/3} is not exactly representable by the IEEE 754 encoding. The output of the code is
+
+\myvbox[myoutputbg]{a=1.000000000000000, b=2.000000000000000, c=3.000000000000000, d=0.500000000000000, e=0.333333343267441}
+
+Notice how \texttt{d} is exactly represented but \texttt{e} is only represented to about 7 digits of accuracy. More on that later.
+
+{\bf A6}: Here we are playing a dangerous game by adding a small number to a one. In the floating point representation the 1 fixes the representation so that the exponent is 127, and then since 1e-9 is smaller than $2^{-23}$ we are effectively adding zero to 1. The output after \texttt{c=a+b} is
+\myvbox[myoutputbg]{a = 1.000000000000000, b = 0.000000002000000, c = 1.000000000000000
+}
+So there you have it, according to C $1+2.10^{-9}$ is equal to 1. This single issue is responsible for enumerable problems in numerical computing. I will defer to other classes to cover this in more depth. You can find some cool examples  of ``Numerical Monsters'' where the results of this type of finite precision rounding error manifest in strange ways \href{https://dl.acm.org/citation.cfm?id=377635}{here}.

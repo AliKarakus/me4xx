@@ -1,0 +1,815 @@
+\chapterauthor{Anthony P. Austin}
+
+\minitoc
+
+\section{Introduction}
+
+In the previous lecture, you created a Git repository for use with this class
+on GitLab, cloned it on your virtual machine, and learned some basic Git
+commands.  Here, we take a closer look at these basic commands and add several
+others to our repertoire.
+
+\section{Basic Git Workflow:  Edit--Add--Commit}
+
+The basic workflow for using Git to track changes to your files is one of
+\emph{edit}--\emph{add}--\emph{commit}:
+
+\begin{enumerate}
+
+\item \emph{Edit} your files.
+
+\item \emph{Add} the changes to Git's \emph{index}.
+
+\item \emph{Commit} the changes staged in the index to the repository.
+
+\end{enumerate}
+
+\begin{tsession}{mytermbg}
+\begin{verbatim}
+$ emacs file.txt
+$ git add file.txt
+$ git commit
+\end{verbatim}
+\end{tsession}
+
+Forgetting step 2 (``add'') is a common pitfall, especially for people used to
+version control systems like CVS and Subversion, which have no analogue.  It is
+good practice to use \texttt{git status} before committing to make sure you
+have added all desired changes to the index:
+
+\begin{tsession}{mytermbg}
+\begin{verbatim}
+$ git status
+On branch master
+Changes to be committed:
+  (use "git reset HEAD <file>..." to unstage)
+
+        modified:   file.txt
+
+Changes not staged for commit:
+  (use "git add <file>..." to update what will be committed)
+  (use "git checkout -- <file>..." to discard changes in working directory)
+
+        modified:   anotherFile.txt
+\end{verbatim}
+\end{tsession}
+
+This output shows that our changes to \texttt{file.txt} have been added to the
+index but that those to \texttt{anotherFile.txt} have not.  Thus, if we next
+run \texttt{git commit}, the changes to \texttt{file.txt} will be committed,
+but those to \texttt{anotherFile.txt} will not.
+
+If you add changes to the index and later decide that you do not want them to
+be part of your commit, you can un-stage them with \texttt{git reset}.
+Continuing the example from above, we can unstage the changes to
+\texttt{file.txt} as follows:
+
+\begin{tsession}{mytermbg}
+\begin{verbatim}
+$ git reset file.txt
+Unstaged changes after reset:
+M	anotherFile.txt
+M	file.txt
+\end{verbatim}
+\end{tsession}
+
+(The \texttt{M} indicates that the file was modified.)  Now \texttt{git status} shows
+
+\begin{tsession}{mytermbg}
+\begin{verbatim}
+$ git status
+On branch master
+Changes not staged for commit:
+  (use "git add <file>..." to update what will be committed)
+  (use "git checkout -- <file>..." to discard changes in working directory)
+
+	modified:   anotherFile.txt
+	modified:   file.txt
+
+no changes added to commit (use "git add" and/or "git commit -a")
+\end{verbatim}
+\end{tsession}
+
+Both files have been modified, but changes to neither have been staged for
+commit.
+
+To see what changes have been made since the last commit, you can use
+\texttt{git diff}:
+
+\begin{tsession}{mytermbg}
+\begin{verbatim}
+$ git diff
+diff --git a/anotherFile.txt b/anotherFile.txt
+index 9ca9a87..7603f14 100644
+--- a/anotherFile.txt
++++ b/anotherFile.txt
+@@ -1 +1,2 @@
+ This is another file.
++This is a new line in the other file.
+diff --git a/file.txt b/file.txt
+index 4dd1ef7..685e488 100644
+--- a/file.txt
++++ b/file.txt
+@@ -1 +1,2 @@
+ This is a file.
++This is a new line in the file.
+\end{verbatim}
+\end{tsession}
+
+This outputs the differences in the files in the unified diff format.  Lines
+beginning with a \texttt{+} have been added since the last commit; lines
+beginning with a \texttt{-} have been deleted.  Note that \texttt{git diff}
+only shows changes that have not been staged (added to the index).  To see
+staged changes, use \texttt{git diff --cached}:
+
+\begin{tsession}{mytermbg}
+\begin{verbatim}
+$ git add file.txt
+$ git diff
+diff --git a/anotherFile.txt b/anotherFile.txt
+index 9ca9a87..9b6f183 100644
+--- a/anotherFile.txt
++++ b/anotherFile.txt
+@@ -1 +1 @@
+-This is another file.
++This is a new line in the other file that replaces the old one.
+$ git diff --cached
+diff --git a/file.txt b/file.txt
+index 4dd1ef7..685e488 100644
+--- a/file.txt
++++ b/file.txt
+@@ -1 +1,2 @@
+ This is a file.
++This is a new line in the file.
+\end{verbatim}
+\end{tsession}
+
+If you've changed a file but decide that you do not want to keep the changes,
+you can use \texttt{git checkout} to discard them:
+
+\begin{tsession}{mytermbg}
+\begin{verbatim}
+$ git checkout anotherFile.txt
+$ git status
+On branch master
+Changes to be committed:
+  (use "git reset HEAD <file>..." to unstage)
+
+	modified:   file.txt
+\end{verbatim}
+\end{tsession}
+
+Notice that \texttt{git status} no longer lists \texttt{anotherFile.txt} as
+modified.
+
+When you run \texttt{git commit}, Git will open a text editor (usually
+\texttt{vi} by default) to let you write your commit message.  The standard
+format for a Git commit message is to begin with a single short (less than
+80-character) line summarizing the changes in the commit, followed by a blank
+line, and then more thorough description as needed.  Get in the habit of
+writing good, informative commit messages.  Your collaborators (including your
+future self) will thank you, as good commit messages can make it much easier to
+trace the history of development of a piece of code by revealing what the
+developer was thinking when the changes were checked in.
+
+\section{Looking Through History}
+
+Git has a number of commands for viewing the commit history of a repository.
+The most basic of these is \texttt{git log}:
+
+\begin{tsession}{mytermbg}
+\begin{verbatim}
+$ git log
+commit cae7fa52ce9d58aba4f743ff15f6fafb684da4d6
+Author: J. D. Hokie <jdh@vt.edu>
+Date:   Tue Sep 3 20:23:07 2019 -0400
+
+    Add numbered headers to files.
+
+commit 9759687249220a7e079eeab185c9f10c76775351
+Author: J. D. Hokie <jdh@vt.edu>
+Date:   Tue Sep 3 20:22:35 2019 -0400
+
+    Add yet another file.
+
+commit 16db20ec863d28215fd9532133bbf6d35234b604
+Author: J. D. Hokie <jdh@vt.edu>
+Date:   Tue Sep 3 20:21:20 2019 -0400
+
+    Add a new line to the first file.
+
+commit ffef1cf6368a65aec94ff34da53369e32e663191
+Author: J. D. Hokie <jdh@vt.edu>
+Date:   Tue Sep 3 16:47:31 2019 -0400
+
+    Add another file.
+
+commit 0bd6c8e9f7370881de6526db9745c54eefbd2caf
+Author: J. D. Hokie <jdh@vt.edu>
+Date:   Tue Sep 3 15:37:53 2019 -0400
+
+    Initial commit.
+
+\end{verbatim}
+\end{tsession}
+
+The history begins with the most recent commit and proceeds backward in time.
+Each entry shows the commit author's name and e-mail address, a timestamp with
+the date of creation, and the message that the author wrote when the commit was
+made.
+
+The long hexadecimal string at the beginning of each log entry is a 160-bit
+SHA-1 hash that uniquely identifies the commit.  These hashes can be used
+throughout Git to refer to commits.  You can abbreviate a hash to its first few
+characters if that is enough to identify it.  As an example, if you want to see
+the full log entry, including the patch, associated with the third commit above
+(\texttt{16db20ec}), you can do
+
+\begin{tsession}{mytermbg}
+\begin{verbatim}
+$ git show 16db20ec
+commit 16db20ec863d28215fd9532133bbf6d35234b604
+Author: J. D. Hokie <jdh@vt.edu>
+Date:   Tue Sep 3 20:21:20 2019 -0400
+
+    Add a new line to the first file.
+
+diff --git a/file.txt b/file.txt
+index 4dd1ef7..685e488 100644
+--- a/file.txt
++++ b/file.txt
+@@ -1 +1,2 @@
+ This is a file.
++This is a new line in the file.
+\end{verbatim}
+\end{tsession}
+
+The \texttt{git show} command can also show the state of a file at the time of
+a given commit, e.g.:
+
+\begin{tsession}{mytermbg}
+\begin{verbatim}
+$ git show 16db20ec:file.txt
+\end{verbatim}
+\end{tsession}
+
+Just as \texttt{git diff} can be used to view changes made since the previous
+commit, it can also be used to show changes made between two commits.  For
+instance, to see the changes between \texttt{16db20ec} and the current commit
+you can do:
+
+\begin{tsession}{mytermbg}
+\begin{verbatim}
+$ git diff 16db20ec..HEAD
+diff --git a/anotherFile.txt b/anotherFile.txt
+index 9ca9a87..ece730d 100644
+--- a/anotherFile.txt
++++ b/anotherFile.txt
+@@ -1 +1,3 @@
++FILE 2
++------
+ This is another file.
+diff --git a/file.txt b/file.txt
+index 685e488..a89ec53 100644
+--- a/file.txt
++++ b/file.txt
+@@ -1,2 +1,4 @@
++FILE 1
++------
+ This is a file.
+ This is a new line in the file.
+diff --git a/yetAnotherFile.txt b/yetAnotherFile.txt
+new file mode 100644
+index 0000000..a4a93e0
+--- /dev/null
++++ b/yetAnotherFile.txt
+@@ -0,0 +1,3 @@
++FILE 3
++------
++This is yet another file.
+\end{verbatim}
+\end{tsession}
+
+The identifier \texttt{HEAD} is shorthand for the commit at the head of the
+currently checked-out branch (see the section on branching below).
+
+Git's command-line tools for navigating history are useful, but it can also be
+nice to have a way to view history graphically, especially when the history
+branches frequently.  Git ships with a graphical history viewer written in Tcl
+called \texttt{gitk}.
+
+\boximage{figures/L04/gitk.png}{The \texttt{gitk} graphical Git history viewer.}
+
+Each commit on the current branch is displayed with the \texttt{HEAD} commit at
+the top.  The text next to each commit in the graphical history window is the
+first line from the commit message.  Below the history window, one can see the
+currently-selected commit's SHA-1, and below that, the full commit message and
+diff, along with a list of the files that have been modified.
+
+Note that \texttt{gitk} is \emph{not} a graphical interface to Git!  Such
+interfaces do exist, but we discourage their use.  Git was designed to be used
+from the command line, and that is the most popular way to use it.  Many of
+Git's more advanced features are only accessible via the command line.  The
+command line interface to Git has the added advantage of being scriptable,
+enabling easy automation of development tasks in ways that graphical interfaces
+do not support.
+
+\section{Sharing Changes}
+
+Unless you work in isolation, at some point, you will need to share the changes
+you make to a codebase with others.  You will also need to be able to receive
+receive changes others have made and incorporate them into your own copy of the
+code.  Git's features for sharing changes to code are flexible and powerful and
+are one of the two major reasons Git has taken the world of open-source
+development by storm (the other being its facilities for branching, which we
+introduce briefly in the next section).
+
+In this course, we will stick to the basics.  You will share your code with the
+course instructor and teaching assistants by putting them in the repository you
+created on VT CodeLab.  To get code from your laptop to CodeLab, the basic
+command is \texttt{git push}:
+
+\begin{tsession}{mytermbg}
+\begin{verbatim}
+$ git push
+Counting objects: 3, done.
+Delta compression using up to 8 threads.
+Compressing objects: 100% (3/3), done.
+Writing objects: 100% (3/3), 359 bytes | 359.00 KiB/s, done.
+Total 3 (delta 0), reused 0 (delta 0)
+To git@code.vt.edu:jdh/CMDA3634.git
+   4041187..d501a5f  master -> master
+\end{verbatim}
+\end{tsession}
+
+Later in the course, you will also need to know how to get changes from CodeLab
+to your laptop.  The basic command for this is \texttt{git pull}:
+
+\begin{tsession}{mytermbg}
+\begin{verbatim}
+$ git pull
+remote: Counting objects: 3, done.
+remote: Compressing objects: 100% (3/3), done.
+remote: Total 3 (delta 0), reused 0 (delta 0)
+Unpacking objects: 100% (3/3), done.
+From git@code.vt.edu:jdh/CMDA3634.git
+ * branch            HEAD       -> FETCH_HEAD
+Updating 4041187..d501a5f
+Fast-forward
+ anotherFile.txt | 1 +
+ 1 file changed, 1 insertion(+)
+\end{verbatim}
+\end{tsession}
+
+Note that you cannot push new changes to a repository unless you have already
+pulled the latest version of the files being tracked from it already.  If you
+forget to do this, and if the repository to which you are trying to push your
+changes has other changes that you do not yet have, you will get an error like
+this:
+
+\begin{tsession}{mytermbg}
+\begin{verbatim}
+$ git push
+To git@code.vt.edu:jdh/CMDA3634.git
+ ! [rejected]        master -> master (fetch first)
+error: failed to push some refs to 'git@code.vt.edu:jdh/CMDA3634.git'
+hint: Updates were rejected because the remote contains work that you do
+hint: not have locally. This is usually caused by another repository pushing
+hint: to the same ref. You may want to first integrate the remote changes
+hint: (e.g., 'git pull ...') before pushing again.
+hint: See the 'Note about fast-forwards' in 'git push --help' for details.
+\end{verbatim}
+\end{tsession}
+
+To fix this, do \texttt{git pull} first; then retry \texttt{git push}:
+
+\begin{tsession}{mytermbg}
+\begin{verbatim}
+$ git pull
+remote: Counting objects: 3, done.
+remote: Compressing objects: 100% (3/3), done.
+remote: Total 3 (delta 1), reused 0 (delta 0)
+Unpacking objects: 100% (3/3), done.
+From git@code.vt.edu:jdh/CMDA3634.git
+   d501a5f..b932eba  master     -> origin/master
+Merge made by the 'recursive' strategy.
+ yetAnotherFile.txt | 1 +
+ 1 file changed, 1 insertion(+)
+$ git push
+Counting objects: 5, done.
+Delta compression using up to 8 threads.
+Compressing objects: 100% (5/5), done.
+Writing objects: 100% (5/5), 580 bytes | 580.00 KiB/s, done.
+Total 5 (delta 2), reused 0 (delta 0)
+To git@code.vt.edu:jdh/CMDA3634.git
+   b932eba..3a51a4e  master -> master
+\end{verbatim}
+\end{tsession}
+
+You may be prompted for a commit message for a merge commit.
+
+Notice that in neither of these commands did we specify where to push our data
+or from where to pull it.  The reason is that Git remembers the URL of your
+repository on CodeLab from when you cloned it in the previous lecture.  From
+the perspective of the repository on your laptop, your repository on CodeLab
+repository is what Git calls a \emph{remote repository}, or just a
+\emph{remote} for short.  To see a list of all the remotes of which your
+current repository is aware, you can use \texttt{git remote -v}:
+
+\begin{tsession}{mytermbg}
+\begin{verbatim}
+$ git remote -v
+origin	git@code.vt.edu:jdh/CMDA3634.git (fetch)
+origin	git@code.vt.edu:jdh/CMDA3634.git (push)
+\end{verbatim}
+\end{tsession}
+
+This output shows that you have a remote named \texttt{origin} that refers to
+your repository on CodeLab.   The two URLs shown are the locations from which
+Git will retrieve (``fetch'') changes and to which Git will send (``push'')
+changes when interacting with this remote.  The two URLs are almost always the
+same; in rare circumstances, it can be beneficial for them to be different.
+
+The \texttt{git push} command shown above is actually shorthand for
+
+\begin{tsession}{mytermbg}
+\begin{verbatim}
+$ git push origin master
+\end{verbatim}
+\end{tsession}
+
+which instructs Git to push commits from the \texttt{master} branch on your
+laptop's repository to the \texttt{master} branch of the repository specified
+by the \texttt{origin} remote, i.e., your CodeLab repository.  Likewise
+
+\begin{tsession}{mytermbg}
+\begin{verbatim}
+$ git pull origin master
+\end{verbatim}
+\end{tsession}
+
+tells git to pull changes from the \texttt{master} branch on CodeLab into the
+currently checked-out branch on your laptop.
+
+It is considered good practice to use the long forms of these commands,
+specifying both the remote and the branch name explicitly.  This greatly
+reduces the likelihood of accidentally sending (receiving) changes to (from)
+the wrong place when you work with multiple remotes.
+
+\section{Branching Basics}
+
+What do we mean by the \texttt{master} branch?  In the language of version
+control systems, a \emph{branch} refers to a line of code development.  In this
+class, you have only one line of development to worry about---that associated
+with your own coursework---but in large projects with multiple developers, it
+is common to have tens, hundreds, or even thousands of lines of development
+that are active at once on the same codebase.  Modern version control systems
+all have facilities for supporting multiple branches.
+
+In Git, branches are particularly simple:  they're essentially just references
+to specific commits.  A branch ``points'' to a commit, and when a new commit is
+made ``to'' that branch, two things happen.  First, the commit to which the
+branch currently refers is made the immediate ancestor of the new commit.
+Second, the branch is updated to point to the new commit.
+
+When a Git repository is first initialized, it comes with a default branch
+named \texttt{master} that is set to the current branch.  Many (but not all)
+software projects that use Git for version control retain this branch and use
+it to refer to the most recently released or ``stable'' version of the software
+or to code that will be in the next release.
+
+As mentioned above, in this class, you have only one line of development, and
+you will be making all of your commits to your repository's \texttt{master}
+branch, but as real-world codebases frequently have multiple branches, it is
+useful to know the basics for how to work with branches in Git.
+
+You can see what branch you are currently on with \texttt{git status}:
+
+\begin{tsession}{mytermbg}
+\begin{verbatim}
+$ git status
+On branch master
+nothing to commit, working tree clean
+\end{verbatim}
+\end{tsession}
+
+The output clearly states that we are on the \texttt{master} branch.
+
+You can see a list of all the branches in your repository with \texttt{git
+branch}
+
+\begin{tsession}{mytermbg}
+\begin{verbatim}
+$ git branch
+  experimental
+* master
+\end{verbatim}
+\end{tsession}
+
+This repository has two branches:  \texttt{experimental} and \texttt{master}.
+The current branch is indicated by an asterisk (\texttt{*}).
+
+The branch that's currently active is said to be ``checked out''.  To check out
+a different branch, use \texttt{git checkout}:
+
+\begin{tsession}{mytermbg}
+\begin{verbatim}
+$ git checkout experimental
+Switched to branch 'experimental'
+\end{verbatim}
+\end{tsession}
+
+When you do this, the files in your repository will automatically change to
+whatever state they were in on the commit at the head of that branch.
+
+You can create a new branch and check it out with \texttt{git checkout -b}:
+
+\begin{tsession}{mytermbg}
+\begin{verbatim}
+$ git checkout -b newBranch
+Switched to a new branch 'newBranch'
+\end{verbatim}
+\end{tsession}
+
+The head of the new branch will be whatever commit is currently checked out.
+If you want it to be somewhere else, you can specify it by its SHA-1:
+
+\begin{tsession}{mytermbg}
+\begin{verbatim}
+$ git checkout -b anotherBranch 40411875
+Switched to a new branch 'anotherBranch'
+\end{verbatim}
+\end{tsession}
+
+To merge changes from one branch into another, the command is \texttt{git
+merge}.  This command merges changes from a given branch into the branch that
+is currently checked out.  To merge changes from a branch named
+\texttt{experimental} into the \texttt{master} branch, you do:
+
+\begin{tsession}{mytermbg}
+\begin{verbatim}
+$ git checkout master
+Switched to branch 'master'
+$ git merge experimental
+Updating 3a3637a..ee3580a
+Fast-forward
+ file.txt | 1 +
+ 1 file changed, 1 insertion(+)
+\end{verbatim}
+\end{tsession}
+
+In this case, the output of \texttt{git merge} indicated that this was a
+\emph{fast-forward} merge.  This means that the head of the branch named in
+\texttt{git merge} was a descendent of the checked-out branch into which the
+merge was made.  In this case, the merge operation is trivial:  Git just
+redefines the \texttt{master} branch to point to the same commit as the
+\texttt{experimental} one.
+
+For merges that are not fast-forward merges, one must make a \emph{merge
+commit} to join the history of the two branches.  When this happens, Git will
+prompt you for a commit message.  The body of the message will already be
+filled in; you can replace it if you choose.
+
+What happens if both branches have commits that modify the same file in
+different ways?  In this scenario, Git will try to figure out whether the
+changes clash with one another and merge them automatically.  If it cannot do
+this, you will get a message indicating that the changes conflict:
+
+\begin{tsession}{mytermbg}
+\begin{verbatim}
+$ git merge experimental
+Auto-merging file.txt
+CONFLICT (content): Merge conflict in file.txt
+Automatic merge failed; fix conflicts and then commit the result.
+\end{verbatim}
+\end{tsession}
+
+In this case, you will need to edit the files with conflicting changes, add the
+changes to the index with \texttt{git add}, and then use \texttt{git commit} to
+complete the merge.  Git will mark the parts of the files showing where there
+were conflicts that it could not resolve.
+
+\section{An Extended Example}
+
+The following is an example of how Git is used in a typical real-world
+development scenario.  Your work in this class will follow a similar workflow
+except that as you are working on your own, you can do all your work in a
+single line of development without branches (or, rather, using only the
+\texttt{master} branch) if you choose.
+
+Alice's boss has asked her to implement a new feature in their codebase.  As
+the new feature is likely to be unstable, she's been asked to do her
+development in a new branch to keep it separate from the main codebase being
+tracked by the project's \texttt{master} branch.  Alice creates a new branch
+based off of \texttt{master} and does some work:
+
+\begin{tsession}{mytermbg}
+\begin{verbatim}
+$ git checkout -b new-feature master
+$ emacs newFeature.txt
+$ git add newFeature.txt
+$ git commit
+\end{verbatim}
+\end{tsession}
+
+Alice reports back to her boss, saying that the new feature is finished.  Her
+boss says that before it can be incorporated into the stable \texttt{master}
+branch, it needs to undergo review by the project lead.  Alice pushes her
+branch to the project's central repository so the lead can see it.
+
+\begin{tsession}{mytermbg}
+\begin{verbatim}
+$ git push origin new-feature
+\end{verbatim}
+\end{tsession}
+
+The project lead makes a few small changes and then asks Alice to make some
+others.  Alice first makes sure she's on the branch for her feature and then
+pulls the lead's changes into her repository.  She then does the additional
+work and pushes it back for further review:
+
+\begin{tsession}{mytermbg}
+\begin{verbatim}
+$ git checkout new-feature
+$ git pull origin new-feature
+$ emacs newFeature.txt
+$ git add newFeature.txt
+$ git commit
+$ git push origin new-feature
+\end{verbatim}
+\end{tsession}
+
+The project lead is now happy with her code and asks Alice to incorporate it
+into the \texttt{master} branch.  She switches to the \texttt{master} branch,
+makes sure she has pulled any updates that have been pushed to it in the
+meantime and then merges her feature branch into it with \texttt{git merge}:
+
+\begin{tsession}{mytermbg}
+\begin{verbatim}
+$ git checkout master
+$ git pull origin master
+$ git merge new-feature
+\end{verbatim}
+\end{tsession}
+
+Finally, she pushes the newly updated \texttt{master} branch to her company's
+central repository and deletes the local and remote versions of her feature
+branch, which are no longer needed:
+
+\begin{tsession}{mytermbg}
+\begin{verbatim}
+$ git push origin master
+$ git push origin :new-feature
+$ git branch -d new-feature
+\end{verbatim}
+\end{tsession}
+
+\section{Miscellaneous Tips}
+
+Git has many useful features---far too many to cover comprehensively in these
+notes.  Here are a few additional features that may be useful to you in this
+course.
+
+\subsection{Ignoring Files}
+
+Often, you have files that you do not want Git to track.  You can get Git to
+ignore these files by creating a file named \texttt{.gitignore} in your
+repository and adding the files that you do not want tracked to it, one per
+line.  Wildcard patterns are accepted; see  \texttt{man gitignore} for details
+about the syntax.
+
+As a basic example, this \texttt{.gitignore}
+
+\begin{minted}{text}
+*.o
+myProgram
+\end{minted}
+
+will ignore the file \texttt{myProgram} and all object files ending in with the
+generated by a compilation process.  Why track these when they can be
+regenerated from the (tracked) source files?
+
+Patterns specified in a \texttt{.gitignore} file apply to the directory in
+which the \texttt{.gitignore} is located any any subdirectories.  Note that the
+\texttt{.gitignore} file is trackable by Git; this is useful for distributing
+project-wide ignore rules to all developers.
+
+\subsection{Tracking Empty Directories}
+
+Git tracks files, not directories.  You cannot add a directory to a repository
+unless it has a file in it.  If you just want to set up a directory structure
+and have Git track it, one way to accomplish this is to create a single empty
+file in the directory, conventionally named \texttt{.KEEP} or
+\texttt{.gitkeep}, and commit that file.
+
+\subsection{Deleting, Moving, and Renaming Files}
+
+The important thing to remember when deleting, moving, or renaming files is
+that each of these operations is a change that must be added to Git's index
+before it can be committed.  For instance, to delete a file, you can use
+\texttt{rm} like usual, followed by \texttt{git add}:
+
+\begin{tsession}{mytermbg}
+\begin{verbatim}
+$ rm file.txt
+$ git add file.txt
+$ git status
+On branch master
+Changes to be committed:
+  (use "git reset HEAD <file>..." to unstage)
+
+	deleted:    file.txt
+
+\end{verbatim}
+\end{tsession}
+
+This two-step sequence is a little awkward---it feels weird to \texttt{git add}
+a file that we've deleted---but there is a shortcut; you can use \texttt{git
+rm} instead:
+
+\begin{tsession}{mytermbg}
+\begin{verbatim}
+$ git rm file.txt
+\end{verbatim}
+\end{tsession}
+
+Similarly, to move or rename a file, you can use \texttt{mv} followed by
+\texttt{git add}, or you can use \texttt{git mv} to do both at once.
+
+\subsection{Undoing a Commit}
+
+If you need to undo a commit, the command to use is \texttt{git revert}.  For
+example, if commit \texttt{b932eba4} turned out to be a mistake, you can do
+
+\begin{tsession}{mytermbg}
+\begin{verbatim}
+$ git revert b932eba4
+\end{verbatim}
+\end{tsession}
+
+This command works by creating a new commit that is the ``inverse'' of the old
+commit.  As such, when you run this command, you will be prompted for a commit
+message, giving you some a place to explain the need for the reversion.
+
+\subsection{Getting Help}
+
+If you can't remember the options for a given command and need a quick
+reminder, the Git manual pages are a good place to look.  The manual pages are
+named after the commands with spaces replaced by hyphens; for instance, to
+retrieve the manual page for \texttt{git add}, type \texttt{man git-add}.
+
+The top-level manual page (\texttt{man git}) has, among other things, a list of
+all the Git commands, including many that we have not discussed here.  Other
+manual pages of interest include the Git tutorial at \texttt{man gittutorial}
+(and its sequel \texttt{man gittutorial-2}), the glossary at \texttt{man
+gitglossary}, and the summary of ``everyday'' Git commands and workflows at
+\texttt{man giteveryday}.
+
+\newpage
+\section{Summary of Git Commands}
+
+Table \ref{gitCommandsFull.tab} extends the summary table of Git commands from
+the previous lecture to include the new commands we have covered above.
+
+\begin{table}[htbp!]
+    \centering
+    \begin{tabular}{l|l} \hline
+      Action & \verb|git| commands \\ \hline
+         Clone repo &  \texttt{git clone [URL OF REPO]}\\ \hline
+         Check repo status & \texttt{git status} \\
+         Add file change to local repo & \texttt{git add [FILE NAME]} \\
+         Commit change to local repo & \texttt{git commit -m '[NOTE TO ATTACH TO COMMIT]'} \\
+         Push committed changes to remote repo & \texttt{git push} \\
+         Update local repo with remote changes & \texttt{git pull} \\ \hline
+         Unstage a staged change & \texttt{git reset [FILE]} \\
+         Discard changes to a file & \texttt{git checkout [CHANGED FILE]} \\
+         View unstaged changes since the last commit & \texttt{git diff} \\
+         View staged changes since the last commit & \texttt{git diff --cached} \\
+         Delete a tracked file and stage the deletion & \texttt{git rm [FILE]} \\
+         Move a tracked file and stage the move & \texttt{git mv [FILE] [NEW FILE]} \\
+         Undo a commit & \texttt{git revert [COMMIT]} \\ \hline
+         View history of the current branch & \texttt{git log} \\
+         View the message and patch for a commit & \texttt{git show [COMMIT]} \\
+         View a file as it was on a particular commit & \texttt{git show [COMMIT]:[FILE]} \\
+         View difference between two commits & \texttt{git diff [OLD COMMIT]..[NEW COMMIT]} \\
+         Launch Git's built-in graphical history viewer & \texttt{gitk} \\ \hline
+         View remotes associated with local repository & \texttt{git remote -v} \\
+         Push committed changes to remote repo (full form) & \texttt{git push [REMOTE] [BRANCH]} \\
+         Update local repo with remote changes (full form) & \texttt{git pull [REMOTE] [BRANCH]} \\ \hline
+         Create a new branch & \texttt{git branch [NAME OF BRANCH TO CREATE]} \\
+         Switch to a different branch & \texttt{git checkout [NAME OF BRANCH TO SWITCH TO]} \\
+         Create and switch to a different branch & \texttt{git checkout -b [NEW BRANCH] [BRANCH LOCATION]} \\ \hline
+         Merge given branch into current one & \texttt{git merge [BRANCH TO MERGE]} \\ \hline
+    \end{tabular}
+    \caption{Summary of commonly used Git command line tool commands.}
+    \label{gitCommandsFull.tab}
+\end{table}
+
+\section{Further Reading}
+
+The first three chapters of \emph{Pro Git} by Scott Chacon and Ben Straub,
+available at
+\href{https://git-scm.com/book/en/v2}{https://git-scm.com/book/en/v2} contain
+all of the information you need for this class and then some.  If you are
+interested in learning how Git works internally, the first five sections of
+Chapter 10 are also of interest.

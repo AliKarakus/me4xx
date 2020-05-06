@@ -1,0 +1,51 @@
+%\section{Preliminary Lecture Schedule}
+
+Table \ref{schedule.tab} shows a preliminary outline of the lectures for the semester. This schedule is subject to change as the semester progresses.
+
+\small
+\begin{table}[htbp!]
+    \centering
+     \rowcolors{2}{white}{gray!25}
+    \begin{tabular}{l|l|l||l|l} \cline{2-5}
+  &  Date & Lecture & Content & Lab \\ \hline
+   & 08/26 &  \hyperref[linux.chap]{L01} & Linux Operating System & Setting up a VirtualBox \\
+ \parbox[t]{2mm}{\multirow{-2}{*}{\rotatebox[origin=c]{90}{OS}}} & 08/28 & \hyperref[terminal.chap]{L02} & Terminal, commands, file system & Practice using VirtualBox\\ \hline
+  & 09/02 &  -- & Labor Day & --  \\
+  & 09/04 & \hyperref[git.chap]{L03} & Git project management & Build a GitLab repo \\
+  & 09/09 & \hyperref[gitSource.chap]{L04}\textsuperscript{AA} & More Git. Editing files with \texttt{emacs}& Git repo hands on \\
+  \parbox[t]{2mm}{\multirow{-4}{*}{\rotatebox[origin=c]{90}{Workflow}}}  & 09/11 & \hyperref[latex.chap]{L05} & Writing documentation with \LaTeX{}  & \LaTeX{} via \href{overleaf.com}{overleaf.com} \\ \hline
+  &  09/16 & \hyperref[Cintro.chap]{L06} & Syntax, variables, type, math & \texttt{helloWorld.c} \\
+  & 09/18 & \hyperref[Cflow.chap]{L07} & Functions, scope, bits-n-bytes, structs & Coding a  function \\
+  & 09/23 & \hyperref[Cmemory.chap]{L08} & Memory, arrays, pointers & Coding a data array struct \\
+  & 09/25 & \hyperref[Cio.chap]{L09} & Files & Importing data array from file \\
+ \parbox[t]{2mm}{\multirow{-5}{*}{\rotatebox[origin=c]{90}{C coding}}}  & 09/30 & \hyperref[debug.chap]{L10} & Debugging  & Debugging with \texttt{gdb} and \texttt{valgrind}\\ \hline
+  & 10/02 & \hyperref[PythonIntro.chap]{L11}\textsuperscript{JB} & Python: syntax, hello world, packages & TBD\\ 
+  & 10/07 & \hyperref[PythonViz.chap]{L12}\textsuperscript{JB} & Python: k-means, data import, visualization & TBD  \\ \hline \hline
+  & 10/09 & \hyperref[HPCIntro.chap]{L13} & HPC intro: why parallelism ? & -- \\
+  & 10/14 & \hyperref[OpenMPIntro.chap]{L14} &  Open Multi-processing (OpenMP) part I & Threading a loop \\ 
+  & 10/16 & \hyperref[OpenMPadvanced.chap]{L15} & OpenMP part II  & Scaling study \\
+  & 10/21 & \hyperref[MPIIntro.chap]{L16} & Message Passing Interface (MPI) intro & Hello world \\ 
+  & 10/23 & \hyperref[MPIViz.chap]{L17} & MPI: visualizing with Jumpshot & Creating MPI timelines \\
+  & 10/28 & \hyperref[ARC.chap]{L18}\textsuperscript{JK} & Advanced research computing & Hands on using ARC systems \\
+  & 10/30 & \hyperref[MPICollectives.chap]{L19} & MPI: collective communications & Using MPI to compute mean \\
+  \parbox[t]{2mm}{\multirow{-8}{*}{\rotatebox[origin=c]{90}{Parallel computing}}}& 11/04 & \hyperref[MPIPerformance.chap]{L20} & MPI: performance analysis and scaling  & Strong scaling study on ARC \\ \hline \hline
+  %\parbox[t]{2mm}{\multirow{-9}{*}{\rotatebox[origin=c]{90}{Parallel computing}}} & 11/06 & L21 & MPI: parallel sort & TBD \\ \hline
+  & 11/06 & \hyperref[quadtree.chap]{L21} & Quadtree: optimized nearest neighbor search & -- \\
+    & 11/11 & \hyperref[ParallelR.chap]{L22}\textsuperscript{JK} & Parallel computing with R & R on ARC \\
+  & 11/13 & \hyperref[performance.chap]{L23} & Code profiling and optimization & Using gprof ? \\
+  & 11/18 & \hyperref[whyGPUs.chap]{L24} & Why graphics processing units ? & -- \\
+  & 11/20 & \hyperref[CUDAhelloWorld.chap]{L25} & GPU computing with CUDA I: adding arrays & CUDA hello world on ARC\\
+  & 12/02 & \hyperref[CUDAreductions.chap]{L26} & GPU computing with CUDA II: reductions & -- \\ 
+   & 12/05 & \hyperref[advancedGPU.chap]{L27} & Portable GPU coding: HIP \& OpenCL & -- \\ 
+  & 12/09 & \hyperref[pythonGPU.chap]{L28}\textsuperscript{AK} & HPC Python part I & PyOpenCL in jupyter \\
+  \parbox[t]{2mm}{\multirow{-7}{*}{\rotatebox[origin=c]{90}{Special topics}}} & 12/11 & L29\textsuperscript{JW} & HPC Python part II: optimizing Python code & Cython in notebook \\
+  \hline
+ % & 12/11 & L29 & Cloud demo \& course review & TBD \\ \hline
+    \end{tabular}
+    \caption{Draft Overview of Initial Lectures. Lectures annotated with superscripts will be given by guest lecturers:  Anthony Austin (Math postdoc),  Jonathan Baker (GTA),  Justin Krometis (VT Advanced Research Computing group), Andreas Kloeckner (CS professor @University of Illinois Urbana-Champaign), Jason Wilson (VT CMDA and Math instructor). Additional assignment coding sessions not shown.}
+    \label{schedule.tab}
+\end{table}
+\normalsize
+
+%% GNU Make system. Using library functions
+%% Mini-project & k-means data classification 

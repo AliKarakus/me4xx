@@ -1,0 +1,248 @@
+\chapterauthor{Tim Warburton}
+
+\epigraph{A supercomputer is a device for turning compute-bound problems into I/O-bound problems}{Ken Batcher}
+
+\minitoc
+
+The Linux file system really is just a hierarchical collection of files. In the following we will discuss how to interact with the file system. Specifically we will start by using the C standard IO (input/output) library to open a  file, read the contents, then close the file. We will repeat this process but writing write data to a file. 
+
+\section{Reading data from a file}
+
+The C standard IO library internally represents a file using a struct of type \texttt{FILE}. We do not need to be concerned about the contents of a \texttt{FILE} struct, but conceptually we should be aware that once a file is open the library keeps track of our place in the file. 
+
+The following code includes the \texttt{stdio.h} header file, opens a file, and reads an integer value from the file.
+
+\begin{minted}{c}
+/* L09/readIntFromFile.c */
+
+#include <stdio.h>
+
+int main(int argc, char **argv){
+  
+   FILE *fp = fopen("foo.dat", "r");
+   
+   int n;
+   fscanf(fp, "%d", &n);
+   
+   printf("Read %d from foo.dat\n", n);
+   
+   fclose(fp);
+   return 0;
+}
+\end{minted}
+
+We first open the file using the file open function \texttt{fopen}. 
+\begin{itemize}
+\item[]{\bf Note \#1}: in this case we pass the name of the file as a constant string literal. 
+
+\item[]{\bf Note \#2}: if the file is not in the present working directory we would have to include the path to the file in the file name string.
+
+\item[]{\bf Note \#3}: we also pass a second string that specifies that we wish to \underline{\bf r}ead from the file. If we had wanted to write to the file we would have replaced the r in the string with w.
+
+\item[]{\bf Note \#4}: if the file does not exist or cannot be opened for some reason \texttt{fopen} will return a NULL pointer. We should add code to check for this.
+\end{itemize}
+
+Once the file is opened we can proceed to scan through the file. We use the \texttt{fscanf} file-scan-formatted function in this case to read a single an integer. It will ignore white space (like tabs or blank spaces) and then try to read an integer. 
+
+\begin{itemize}
+\item[] {\bf Note \#1}: we instruct \texttt{fscanf} what kind of text we want to read and what kind of number to output through the format string. In this case \texttt{\%d} specifies that we want \texttt{fscanf} to treat the next group of non-space characters as a number. 
+
+\item[]{\bf Note \#2}: once the number is read the standard IO library will advance its internal file pointer to the next character after the end of the number it read.
+
+\item[]{\bf Note \#3}: you can specify that more than one object should be read by adding extra format blocks to the format string. Some options are: \texttt{\%c} for a \texttt{char}, \texttt{\%s} for a string, \texttt{\%f} for a float, etc. See \href{https://www.tutorialspoint.com/c_standard_library/c_function_fscanf.htm}{this tutorial} for more info.
+
+\item[]{\bf Note \#4}: notice how we passed a pointer to the \texttt{n} variable. Since \texttt{fscanf} can read more than one variable from the file it is necessary to provide pointers to the variables passed in to receive the data from the file.
+\end{itemize}
+
+Finally we use \texttt{fclose} to close the file. It is always important to close files after we are done with them, in particular when writing data to them as in the next section.
+
+To demonstrate scanning for more than one thing from a file see the following code
+
+\begin{minted}{c}
+/* L09/readMixedFromFile.c */
+#include <stdio.h>
+
+int main(int argc, char **argv){
+  
+   FILE *fp = fopen("foo.dat", "r");
+   
+   int n,m;
+   float f;
+   fscanf(fp, "%d %d %f", &n, &m, &f);
+   
+   printf("Read %d,%d,%f from foo.dat\n", n,m,f);
+   
+   fclose(fp);
+   return 0;
+}
+\end{minted}
+
+\section{Writing data to a file}
+
+The process of writing data to a file is much as before. In the simplest approach we simply open a new file specifying that we will write to the file and then we use the file-print-formatted standard IO function \texttt{fprintf} to write data to the file.
+
+\begin{minted}{c}
+/* L09/writeMixedToFile.c */
+#include <stdio.h>
+
+int main(int argc, char **argv){
+  
+   /* open bah.dat in the pwd to write to */
+   FILE *fp = fopen("bah.dat", "w");
+   
+   int n = 10,m = 20;
+   float f = 1.3;
+
+   fprintf(fp, "%d %d %f", n, m, f);
+   
+   fclose(fp);
+   return 0;
+}
+\end{minted}
+Note the action string passed to \texttt{fopen} is ``w'' for \underline{\bf w}rite. Also note subtle difference between \texttt{fprintf} and \texttt{fscanf}. Because we are passing data into \texttt{fprintf} we pass by value and do not need to pass pointers into the data arguments.
+
+We can further tweak the format string passed to \texttt{fprintf} to specify the number of decimal places or whether we should scientific notation for the \texttt{float}. You can find formatting string information with your favorite search engine (search: \emph{C format string fprintf}) or you can use the builtin Terminal man pages with 
+\myvbox[mytermbg]{man fprintf}
+There are \texttt{man} pages for most C standard library functions accessible through the \texttt{man} command.
+
+\section{Example: reading/writing arrays from/to text files}
+
+In this section we will expand on the functionality of our \texttt{array} struct from the defensive programming  Section \ref{array.sec}.
+
+We will specify that an \texttt{array} file has an expected format:
+\myvbox[myoutputbg]{<NUMBER OF ENTRIES IN ARRAY> \\ 
+number \\
+<ENTRIES IN ARRAY> \\
+first entry \\ 
+second entry \\
+... \\\
+last entry }
+
+This is a pretty barebones format. We could add a lot more meta-data to the file like data created, author program, format version, precision, variable format. For the moment we will just keep it simple.
+
+To encapsulate interactions between the \texttt{array} and the file system we will create two functions: \texttt{arrayRead} and \texttt{arrayWrite} to read and write arrays respectively.
+
+A barebones \texttt{arrayRead} function is as follows
+
+\begin{minted}{c}
+array arrayRead(const char *fileName){
+
+  array a;
+
+  FILE *fp = fopen(fileName, "r");
+  if(fp){
+    char buffer[BUFSIZ];
+    /* skip header line */
+    fgets(buffer, BUFSIZ, fp);
+
+    /* read next line */
+    int Ndata;
+    fgets(buffer, BUFSIZ, fp);
+    sscanf(buffer, "%d", &Ndata);
+
+    /* construct array */
+    a = arrayConstructor(Ndata);
+
+    /* skip header line */
+    fgets(buffer, BUFSIZ, fp);
+
+    /* read array entries */
+    int n, m;
+    for(n=0;n<a.Ndata;n=n+1){
+      fscanf(fp, "%d", &m);
+      arraySet(a, n, m); /* a[n] = m */
+    }
+    fclose(fp);
+  }
+  else{
+    a = arrayConstructor(0);
+  }
+  return a;
+}
+\end{minted}
+The only new thing here is the use of the \texttt{fgets} to read a line of up to \texttt{BUFSIZ} characters into a stack string arrray called \texttt{buffer}. The \texttt{fgets} will read up \texttt{BUFSIZ} characters, finishing early if it encounters a line return in the file. If we were being super careful we would guard each call to \texttt{fgets} and verify that it does not return a NULL pointer. We would also check that the header line for each section contains the expected text.
+
+A simplified implementation of \texttt{arrayWrite} follows
+
+\begin{minted}{c}
+void arrayWrite(const char *fileName, array a){
+
+  FILE *fp = fopen(fileName, "w");
+
+  if(fp){
+
+    fprintf(fp, "<NUMBER OF ENTRIES IN ARRAY>\n");
+    fprintf(fp, "%d\n", a.Ndata);
+
+    fprintf(fp, "<ENTRIES IN ARRAY>\n");
+    /* read array entries */
+    int n, m;
+    for(n=0;n<a.Ndata;n=n+1){
+      int m = arrayGet(a, n); /* m = a[n] */
+      fprintf(fp, "%d\n", m);
+    }
+    fclose(fp);
+  }
+  else{
+    fprintf(stderr, "WARNING: failed to open %s to write\n", fileName);
+  }
+}
+\end{minted}
+This implementation applies concepts previously discussed. 
+
+In both \texttt{arrayRead} and \texttt{arrayWrite} we follow the spirit of the \texttt{array} implementation and use the constructor, get, and set functions. Reflecting on this code we should also add a function to the growing collection of \texttt{array} functions to query the \texttt{Ndata} i.e. the number of entries in the \texttt{array}.
+
+The following illustrates how we can read and then write an \texttt{array} file.
+
+\begin{minted}{c}
+int main(int argc, char **argv){
+
+  array a;
+
+  /* read array */
+  a = arrayRead("arrayA.dat");
+
+  /* write array out to copy */
+  arrayWrite("copyArrayA.dat", a);
+
+  return 0;
+}
+\end{minted}
+
+We do not directly access member variables of the \texttt{array} struct at any point in this high level code.
+
+\section{Summary of useful C standard input-output functions}
+
+Table \ref{stdInputOutputFunctions.tab} summarizes useful standard library function calls for interacting with the heap. Table \ref{stdInputOutputDefines.tab} summarizes useful variables defined in the standard input-output library. 
+
+\begin{table}[htbp!]
+    \centering
+    \begin{tabular}{l|l} \hline
+      Action & Action implemented using standard input-output functions\\ \hline
+        Open file to read&  \texttt{FILE* [FILE POINTER] =  fopen("[FILE NAME]", "r"];} \\
+         Open file to write&  \texttt{FILE* [FILE POINTER] =  fopen("[FILE NAME]", "w"];} \\
+         Formatted print to file &  \texttt{fprintf([FILE POINTER], 
+         "[FORMAT]", [VAL1], [VAL2], ...);} \\
+         Formatted read from file &  \texttt{fscanf([FILE POINTER], 
+         "[FORMAT]", \&[VAL1], \&[VAL2], ...);} \\
+         Read string from file & \texttt{fgets([BUFFER POINTER], [NUMBER OF CHARS], [FILE POINTER]);} \\
+         Write a string to file & \texttt{fputs([BUFFER POINTER], [FILE POINTER]);} \\
+         Flush pending writes to file & \texttt{fflush([FILE POINTER]);} \\
+         Close file & \texttt{fclose([FILE POINTER]);} \\
+    \hline\end{tabular}
+    \caption{Summary of commonly used standard library heap functions. Here \texttt{[N]} is the number of entries of type \texttt{[TYPE]} in the arrays.}    
+    \label{stdInputOutputFunctions.tab}
+\end{table}
+
+\begin{table}[htbp!]
+    \centering
+    \begin{tabular}{l|l} \hline
+      Name & Variable\\ \hline
+       Standard output terminal stream&  \texttt{stdout} \\
+       Standard input terminal stream &  \texttt{stdin} \\
+       Standard error terminal stream &  \texttt{stderr} \\
+       Recommended buffer size  &  \texttt{BUFSIZ} \\
+    \hline\end{tabular}
+    \caption{Summary of standard input-output defines.}    
+    \label{stdInputOutputDefines.tab}
+\end{table}

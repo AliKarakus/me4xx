@@ -1,0 +1,483 @@
+\chapterauthor{Russell J. Hewett}
+
+\minitoc
+
+\section{Motivation}
+
+We follow style guides because they help provide structure to our code, making it more readable, more consistent, and simpler.  In general, following a style guide makes the developer's job easier, it makes the code reviewers job easier, and most importantly for this class, it makes the course staff's job easier.
+
+Every coding project should have a style guide.  If the project does not have one, the organization (company) hosting the project (paying you to write the project) will likely have one.  If the organization does not have one, the language itself will likely have one.
+
+For this class, some languages (e.g., Python) have their own recommended style.  We will use those when we can.  In other cases, such as for the C language, there is no single style guide\cite{Lott2011}.  In this case, by the dictatorial nature of college classes, we will declare one.
+While you may at times feel like style requirements are an annoyance, you will come to appreciate the structure that such a guideline imposes.  Of course, reasonable requests to modify the style guide will be considered as there is always room for improvement.
+
+\subsection{Key Principles}
+\myparagraph{Readability}
+When in doubt, err on the side of readability.  Style is designed to make a code reader's job easier.  Eventually, even the writer will be the reader.  If you are the writer, you are doing future you a favor.  The Google ObjectiveC Style Guide\cite{GoogleDevelopers2018} states this very cleanly:
+    
+    \myquote{Codebases often have extended lifetimes and more time is spent reading the code than writing it. We explicitly choose to optimize for the experience of our average software engineer reading, maintaining, and debugging code in our codebase rather than the ease of writing said code. For example, when something surprising or unusual is happening in a snippet of code, leaving textual hints for the reader is valuable.}
+    
+It is possible to write code that reads very similar to natural English sentences.  This is easier in Python, for example, than it is in the C language.  However, even working in C we should strive for code that is easy to read.  All code and comments must use the English language.
+
+\myparagraph{Consistency} 
+Be consistent with the code in the file you are working on and with the project you are working in.  Sometimes this means writing in a style you are not familiar with, that you do not like, or that you think is objectively incorrect.  Again, this is stated cleanly in the Google ObjectiveC Style Guide\cite{GoogleDevelopers2018}.
+    
+    \myquote{When the style guide allows multiple options it is preferable to pick one option over mixed usage of multiple options. Using one style consistently throughout a code base lets engineers focus on other (more important) issues. Consistency also enables better automation because consistent code allows more efficient development and operation of tools that format or re-factor code. In many cases, rules that are attributed to “Be Consistent” boil down to “Just pick one and stop worrying about it”; the potential value of allowing flexibility on these points is outweighed by the cost of having people argue over them.}
+    
+Even if code does not meet the style guidelines perfectly, if code is consistent, clean, and readable, it is unlikely that anyone will notice (though, automatic code linters are quite effective at catching non-compliant code).  If a reader notices incorrect style it is because there is no flow to the code.
+
+\myparagraph{Simplicity}
+We write code to perform complex tasks.  The complexity of the task is not justification for making the code complicated.  Programming languages (even C and Fortran) provide mechanisms for expressing complex concepts in simpler ways.  Exploit them.  Do not be clever and do not be tricky.  As stated in The Tao of Programming\cite{Witters2005}.
+
+    \myquote{Make everything as simple as possible, unless understandability or readability suffer.}
+    
+Or, alternatively, in The Zen of Python\cite{Peters2004}:
+
+    \myquote{Simple is better than complex. Complex is better than complicated.}
+    
+Regardless of your preferred programming language, you should read and internalize The Zen of Python.  It is full of truth that will carry you far in software development.
+
+\pagebreak
+\section{C Language Style Guide}
+
+% \lstset{frame=lrb,xleftmargin=\fboxsep,xrightmargin=-\fboxsep}
+
+
+
+
+\subsection{General Rules}
+
+\begin{itemize}
+    \item We will use the GNU C11 standard for the C language specification.  This is implemented by both GCC and CLang compilers.  In general, our code should compile with the Intel C compiler as well.  We will identify edge cases as they arise.
+    \begin{itemize}
+        \item This means that we accept both C-style comment blocks and C++-style single line comments.
+        \begin{minted}{c}
+/*
+ * C-style comment block.
+ *
+ * Can contain many words.
+ *
+ */
+
+ /* C-style single-line comment. */
+ 
+ // C++-style single-line comment.
+        \end{minted}
+        \item In-line comments should go above the code they reference, not on the same line (including variable declarations.)
+        \begin{minted}{c}
+/* OK */
+// Loop counters
+int i, j, k;
+
+/* Not OK */
+int i, j, k; // Loop counters
+        \end{minted}
+    \end{itemize}
+
+    \item Lines should contain no more than 78 characters.
+        \begin{itemize}
+            \item \textbf{Justification} This limit comes from the width of old displays and printers.  Printing code on paper is still limited in this way.  In practice, this allows you to have multiple files open on a screen at once, and with modern larger displays you can see more code without having to scan sideways.  Additionally, this forces you to be concise with naming and formatting.
+            \item \textbf{Exception} If going slightly over 78 characters makes code more readable than moving part of it to a new line, it is unlikely that anyone will actually notice that you are over the limit.
+        \end{itemize}
+
+    \item Use whitespace to make code more readable.  Coding assignments are not a contest to see who can fit as much code in one line as possible.  (Though such contests do exist.)
+    \item Indentation levels should be in 4 space blocks.  Do not use tabs for indentation.  Fix your editor so that a the tab key inserts 4 spaces.
+        \begin{itemize}
+            \item \textbf{Justification} This has become the de facto standard across much of the programming world.  There are exceptions, but we will ignore them.
+        \end{itemize}
+    \item Align code logically, for readability.  This can help for debugging and spotting copy-paste errors.
+\end{itemize}
+
+\subsection{Files}
+
+\begin{itemize}
+
+    \item The top of all files must contain a comment block identifying this course, the authors of all code in the file, including course staff and you.  For collaborative projects, the names of any students who contributed to the code must be present.  It must also include any license information as required for code that is not owned by the course staff our you.
+        \begin{minted}{c}
+/*
+ * Portions of this file are copyright John Everyman
+ * and redistributed freely under the <License name here> license.
+ *
+ * <insert license text here>  
+ * 
+ * Additional code is not licensed for redistribution and is owned by the authors or Virginia Tech:
+ * - Alice Instructor
+ * - Bob Student
+ *
+ */
+        \end{minted}
+
+    \item All files must end with a new line.
+
+\end{itemize}
+
+\subsubsection{C Source Files (.c)}
+
+\begin{itemize}
+    \item C source file names must have the \texttt{.c} extension.
+    \item The name of a C source file, up to the extension, should be the same as the corresponding header file.
+    \item C source files contain the implementation (definition) of functions declared in the associated header file.
+    \item Forward declarations should be avoided.  Include all declarations through the relevant header files.
+\end{itemize}
+
+\subsubsection{C Header Files (.h)}
+\begin{itemize}
+    \item Includes should follow the following format: standard library includes, followed by a blank line, external libraries, followed by a blank line, and finally local header files.
+        \begin{minted}{c}
+// Standard Libraries
+#include <stdio.h>
+
+// External Libraries
+#include "mpi.h"
+
+// Local Libraries
+#include "my_header.h"
+        \end{minted}
+
+    \item Type declarations must be in a header file.  It is good practice to list type declarations before function declarations.  If there are a lot of types to declare, it may make sense to break them into separate files to group them logically or to have them in a separate file from function declarations.
+\end{itemize}
+
+\subsection{Macros}
+
+\begin{itemize}
+    \item There should be no preprocessor macros.  Use C functions. Macros create spaghetti code that cannot easily be debugged.
+\end{itemize}
+
+\subsection{Variables}
+
+\subsubsection{Global Variables}
+
+\begin{itemize}
+    \item There should be no global variables.  Global variables are useful in very specific situations which will not come up in this class.  If you feel the need to have a global, there is a 99\% chance that you can redesign the code to avoid it.
+\end{itemize}
+
+\subsubsection{Naming}
+
+\begin{itemize}
+    \item Variables are nouns.  Variables should have descriptive names.  In general, do not use abbreviations, rather, spell words out.
+    \item Variables should be named in all lower-case with words separated by underscores (\texttt{\_}).
+        \begin{minted}{c}
+// Good names
+int widget_counter;
+int total_widgets;
+float mean_widget_volume;
+
+// Bad names
+int wdgt_ctr, widgetCounter, widgetcounter, WIDGETCOUNTER;
+int widgets; 
+float mean_vol; // when used to store only the mean
+\end{minted}
+
+    \item Temporary variables are no exception.  Except in very isolated code, \texttt{tmp} is an unacceptable variable name.
+    \item Some short variables names are acceptable, by convention.  For example, the letters \texttt{i}, \texttt{j}, and \texttt{k} for array loop counters or \texttt{x}, \texttt{y}, and \texttt{z} for coordinates.
+
+        \begin{minted}{c}
+/* OK */
+int i, j, k;
+float x, y, z;
+
+/* Not OK */
+int a, b, c; 
+float i, j, k;
+        \end{minted}
+    \item With the exception of pointers, pre- or post-fixed variable names (e.g., Hungarian notion) should be avoided, unless it is necessary for clarity.
+    \item Pointer variable names should have the \texttt{\_ptr} suffix.  This is an exception to the rule against abbreviations.
+        \begin{minted}{c}
+/* Not OK */
+int* widget;
+
+/* OK */
+int* widget_ptr;
+        \end{minted}
+
+\end{itemize}
+
+\subsubsection{Declaration}
+
+\begin{itemize}
+    \item Variables should be declared at the top of the logical block in which they are being used.  It is also acceptable to declare variables at the top of scope blocks.  Be consistent.
+        \begin{itemize}
+            \item \textbf{Justification} This is a matter of preference.  Ancient C required all variables to be declared at the top of scope blocks.  Modern C supports declarations anywhere in code.  Declaring variables in-line makes the declarations (and thus type information) difficult to find.
+        \end{itemize}
+    \item Static array variables should be declared at the top of scope blocks, preferably function blocks, to aid in memory management.
+    \item One variable should be declared per line.  If variables are grouped, they must also have a logical grouping.
+        \begin{itemize}
+            \item \textbf{Justification} It becomes difficult to determine the type and purpose of variables if they are arbitrarily mixed.  This also becomes a readability issue.
+            \item \textbf{Exception} For pointers (see below), there should only ever be one per line, unless a \texttt{typedef} makes the pointer declaration behavior more explicit.
+        \end{itemize}
+        \begin{minted}{c}
+/* Not OK */
+int widget_index, i, j, k, total_widgets;
+
+/* OK */
+int widget_index;
+int i, j, k;
+int total_widgets;
+
+/* OK */
+int widget_index, total_widgets;
+int i, j, k;
+        \end{minted}
+    \item When declaring pointers, the \texttt{*} should be grouped with the type, not with the variable name.
+        \begin{itemize}
+            \item \textbf{Justification} A variable declared \texttt{int* ptr} has the type ``pointer-to-an-integer,'' not type ``integer'' with a dereference decorator.  \textbf{Be very careful here.  Pay attention to the example below.}  This is a more modern (read: type-centric) interpretation of the declaration pattern\cite{StroustrupBjarne2017}.
+            To be honest, this an ambiguity in the interpretation of the language that has become a bit of a Holy War.  The only way around it is to be explicit (The Zen of Python: ``Explicit is better than implicit.'') and avoid any possible confusion.
+        \end{itemize}
+        \begin{minted}{c}
+/* Preferred */
+float* x_ptr;
+float* y_ptr;
+float* z_ptr;
+
+/* Acceptable in rare circumstances */
+typedef float* float_ptr;
+float_ptr x_ptr, y_ptr, z_ptr;
+
+/* Legal, does what we want, but confusing */
+float *x_ptr, *y_ptr, *z_ptr;
+
+/* Legal again, but it is best to think of the * as part of the type */
+float *x_ptr;
+float *y_ptr;
+float *z_ptr;
+
+/* Completely incorrect */
+// This declares a single pointer-to-a-float (x_ptr) and two more floats (y_ptr and z_ptr)
+float* x_ptr, y_ptr, z_ptr
+        \end{minted}
+\end{itemize}
+
+\subsection{Braces}
+
+\begin{itemize}
+
+    \item Brace and indentation style is one of the great programming Holy Wars.  We are not getting involved in this conflict.  There are two brace and indent styles that are common in C code and we will accept either.  But not both.  Pick one and be consistent.
+        \begin{minted}{c}
+void k_and_r_style() {
+    // the style of Kernighan & Richie, creators of C
+}
+
+void bsd_style()
+{
+    // the style of Eric Allman, BSD coder
+}
+        \end{minted}
+
+    \item Braces are always required, even if there is only one line in the block.  
+        \begin{itemize}
+            \item \textbf{Justification} This makes adding lines to blocks easier without forgetting to add braces.  Also, consistency is king.
+            \item \textbf{Exception} Single-line if statements, without braces, are allowed.
+        \end{itemize}
+        \begin{minted}{c}
+/* Good */
+
+if (foo){
+    do_stuff();
+}
+
+if (foo) do_stuff
+
+/* Bad */
+if (foo)
+    do_stuff();
+        \end{minted}
+
+    \item Comments on closing braces are not required.  If you have very long blocks, they may be useful to help keep track of the purpose of the block.  But, if you have very long code blocks, refactor your code.
+    \item For \texttt{if-then-else} blocks, there are a number of acceptable styles.  Pick one that works well for you and be consistent.
+        \begin{minted}{c}
+if (foo){
+    do_stuff();
+} else if (bar) {
+    do_different_stuff();
+} else {
+    do_absolutely_nothing();
+}
+
+if (foo)
+{
+    do_stuff();
+} 
+else if (bar) 
+{
+    do_different_stuff();
+}
+else 
+{
+    do_absolutely_nothing();
+}
+        \end{minted}
+
+    \item Use the same brace and indent style for \texttt{for} and \texttt{while} loops as you do for function blocks.
+    \item Use the same brace and indent style for \texttt{do-while} loops as you do for \texttt{if-then-else} blocks.
+
+\end{itemize}
+
+
+\subsection{Structures}
+
+\subsubsection{Naming}
+
+\begin{itemize}
+    \item Structure definitions define custom data types.  Data types are proper nouns and should have descriptive names.  In general, do not use abbreviations, rather, spell words out.
+    \item Structures defining data types should be named using upper camel case (UpperCamelCase).
+    \item Use \texttt{typedef} to define a type from the structure.  \textbf{Note:} This is a point of serious disagreement in parts of the C community.  However, this is how we are going to do it.
+    \item Name the \texttt{tag} component of a structure type with the name of the type plus the string \texttt{\_def}.
+        \begin{minted}{c}
+typedef struct Point3D_def {
+    float x;
+    float y;
+    float z;
+} Point3D;
+        \end{minted}
+\end{itemize}
+
+\subsubsection{Member Variables}
+
+\begin{itemize}
+    \item Member variable naming follows the same rule as general variables.
+    \item Each member variable should have its own line.
+    \item C has no notion of public and private variables.  (C has no inherent notion of encapsulation, to be frank.)
+    \item All member variables are public.  If you want to treat a member variable as private, you may end its name with an underscore `\texttt{\_}'.  If you modify a `private' variable, undefined behavior may occur.
+        \begin{minted}{c}
+typedef struct MyStruct_def {
+    int public_data;
+    int private_data_;
+} MyStruct;
+        \end{minted}
+\end{itemize}
+
+
+\subsection{Function naming convention}
+
+Preference expressed by Dr. Hewett (snake case):
+\begin{itemize}
+    \item Functions perform a task.  Their names must be descriptive and should begin with a verb.  In general, do not use abbreviations, rather, spell words out.
+    \item Functions should be named in all lower-case with words separated by underscores (\texttt{\_}).
+        \begin{minted}{c}
+/* Good function name */
+void create_pixel_mask() {
+    // ...
+}
+
+/* Bad function name */
+void masker() {
+    // ...
+}
+        \end{minted}
+\end{itemize}
+
+Preference expressed by Dr. Warburton (camel case):
+
+\begin{itemize}
+    \item Functions should be descriptively named in concatenated words concatenated, with first letter of second and later words capitalized.
+        \begin{minted}{c}
+/* Good function name */
+void createPixelMask() {
+    // ...
+}
+
+/* Bad function name */
+void masker() {
+    // ...
+}
+        \end{minted}
+\end{itemize}
+
+Other naming conventions described \href{https://medium.com/better-programming/string-case-styles-camel-pascal-snake-and-kebab-case-981407998841}{here}.
+
+\section{Python Language Style Guide}
+
+In the event that Python code is used, for example, in plotting or data analysis, you are required to follow the PEP-8 style guide\cite{vanRossumWarsawEtAl2013}.
+
+\myquote{\url{https://www.python.org/dev/peps/pep-0008/}}
+
+\section{Documentation Standards}
+
+In addition to the afore mentioned documentation block for each file, we expect your code to be documented.
+
+\begin{itemize}
+\setlength\itemsep{-1em}
+    \item The code itself should be self documenting.  If you follow coding standards and use clear logic, this will be automatic.
+    \item The purpose of variables and functions should always be readily apparent.  If it is not, either rename the variable or add a small piece of documentation explaining the purpose.
+    \item If there is a tricky piece of logic, add a comment explaining it.  Future you will love past you for this.
+    \item Each structure and function must have a block comment explaining the purpose of the code.  It should contain a brief description of what the function does (which may be obvious due to the function name), a more detailed description of the code or algorithm (if necessary), a listing if input and output variables, including any expectations and assumptions about them, and a description of the return value.
+        \begin{minted}{c}
+// A C-language example.
+
+/* 
+* A brief description here (40-60 chars max).
+* 
+* A more detailed description here.  Can be multiple characters.  But,
+* words should be wrapped at 72 characters.  You can use markdown-like
+* syntax to help with readability of lists and such.
+*
+* Arguments
+*     arr: input pointer to array to be summed
+*     array_length: input length of input array (number of elements to sum)*  
+*
+* Returns:
+*     sum of elements in `arr`
+*/
+
+int sum_array(int* arr, int array_length) {
+    // ...
+}
+        \end{minted}
+\end{itemize}
+
+\pagebreak
+\section{Git Standards}
+
+\subsection{Atomic Commits}
+
+Git commits must be atomic.  That is, they should contain work on \textit{one} task.  This will take some time to get used to, so start practicing now.  More information on atomic commits can be found in this post, \url{https://www.freshconsulting.com/atomic-commits/}, by Sean Patterson~\cite{Patterson2013}.
+
+Atomic commits are important in professional and collaborative development environments for a number of reasons:
+\begin{enumerate}
+    \item Atomic commits make the code review process easier.  Reviewers can check individual commits to see if they do what they advertise.  This is especially important when a proposed change touches a large part of a large code base.
+    \item Atomic commits reduce the chance of merge conflicts.  With multiple developers, merge conflicts are inevitable, however, keeping commits atomic can reduce the chance that two developers are working on the same code.
+    \item Atomic commits make merge conflicts easier to fix.  When merge conflicts happen, it can take some effort to unwind the conflict and repair the work.  Treating commits atomically makes this process much easier.
+    \item In general, atomic commits do not break compilation.  Commits submitted for merge \textit{should} compile and run.  Sometimes they do not, but this is something to strive for.
+\end{enumerate}
+
+It is difficult to define an atomic commit precisely, so I will instead provide some examples of things that would be considered an atomic task.
+
+Atomic tasks:
+\begin{itemize}
+    \item Refactoring a code to rename \texttt{foo} to \texttt{bar}, everywhere.
+    \item Add a new code module.
+    \item Use new functions from that module in the code.
+    \item Fix a bug.
+\end{itemize}
+
+Non-atomic tasks:
+\begin{itemize}
+    \item Refactoring a code to rename \texttt{foo} to \texttt{bar} and add an entire new code module.
+    \item Fixing two unrelated bugs.
+    \item Writing the code to solve an entire assignment.
+\end{itemize}
+
+\pagebreak
+
+\subsection{Commit Messages}
+
+This subject has been written about hundreds of times.  Rather than re-invent the wheel, we will follow the guidelines in a blog post by Chris Beams, with a major exception.
+
+I have repeated his ``Seven Rules'' for git commit messages below.  Read the entire blog post (\url{https://chris.beams.io/posts/git-commit/}) and focus on the explanations of the rules.  Understand why you should follow them even if they may seem arbitrary and capricious at first.
+
+\begin{quote}
+    \begin{enumerate}
+        \item Separate subject from body with a blank line
+        \item Limit the subject line to 50 characters
+        \item Capitalize the subject line
+        \item Do not end the subject line with a period
+        \item Use the imperative mood in the subject line
+        \item Wrap the body at 72 characters
+        \item Use the body to explain what and why vs. how
+    \end{enumerate}
+    -- Chris Beams\cite{Beams2014}
+\end{quote}
+
+I will relax rule \#5, regarding imperative mood.  This is another example of a raging holy war and legitimate arguments can be made for using the imperative mood, or present tense, (as made in the post) or using indicative mood, or past tense, as argued \href{https://stackoverflow.com/a/8059167}{here}, \href{http://disq.us/p/1rxy1py}{here}, and \href{http://disq.us/p/1r4bwo7}{here}\footnote{I find this argument quite compelling.  It is true that treating the subject as a completion of the sentence ``If applied, this commit will'' changes the tense from imperative to infinitive.  These tenses are not easily distinguished in English but are distinguished in other languages, which can make things odd for non-native English speakers.  Past tense is more generally distinct and the meaning is more clear.}.
+
+The truth, as it often does, lies in the situation you are working in.  In this class, your commit messages will be documenting what  you have done, not what will happen if I were to merge them into a master repository.  As such, I personally prefer the past tense for messages.  This policy is strongly dependent on the development environment (class or company) in which you are working.  As always, be consistent and be informative.  Everything else will follow from there.

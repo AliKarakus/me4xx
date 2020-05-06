@@ -1,0 +1,401 @@
+\chapterauthor{Tim Warburton}
+\epigraph{Reductio ad absurdum}{Aristotle in \emph{Prior Analytics}.}
+
+%% memory spaces
+%% HOST system memory
+%% DEVICE system memory
+%% DEVICE L2 cache
+%% DEVICE unified L1/shared memory cache
+%% DEVICE register variables
+
+\minitoc
+
+In this chapter we give a brief overview of a contemporary big iron GPU memory hierarchy. We explain how the memory hierarchy is relevant to reduction type operations and develop a sequence of CUDA reduction kernels to illustrate the impact of thread configuration, parallel partition, and memory access pattern need to be combined to achieve high performance.
+
+\section{GPU DEVICE memory hierarchy}
+%% https://arxiv.org/pdf/1804.06826.pdf
+
+There are research teams around the world who reverse engineer the hardware characteristics of commercially available GPUs using microbenchmarking. The teams develop CUDA compute kernels that can be used to profile the hardware performance and then run these kernels with a range of parameters to estimate critical performance metrics that are not otherwise made public by the GPU manufacturers. For example Table 3.1 in  \cite{jia2018dissecting} reveals a great deal of information about the NVIDIA V100 GPU that we have access to in the ARC Cascades cluster. The information in that table includes the size of the on memory caches in the DEVICE processor.
+
+\begin{table}[htbp!]
+    \centering
+    \begin{tabular}{l|l||l|l|l} \hline
+   Location &  Pool    & Typical Size & Shared by      & Purpose \\ \hline
+   HOST     & System  & up to 1TB    & All HOST threads   & CPU heap storage \\  \hline
+   DEVICE   & System  & 16-32GB      & All DEVICE threads & GPU global heap storage \\
+   DEVICE chip & L2      & 6MB          &                    & GPU global cache     \\
+            & Unified cache  & 128KB/core & Threads in thread-block & GPU cache local to core \\
+            & Registers  & 4$\times$64KB/core & Local to thread   & GPU stack storage on each core \\ \hline
+    \end{tabular}
+    \caption{Brief summary of different levels of CPU and GPU nonunified memory access (NUMA). }
+    \label{gpuMemory.tab}
+\end{table}
+
+In Table \ref{gpuMemory.tab} we summarize the different levels of the GPU nonuniform memory access (NUMA) architecture of the contemporary NVIDIA V100 GPU that we have access to on Cascades. There are separate system memory spaces that are physically attached to the HOST and DEVICE processors where we typically store heap data. We allocate an array on the HOST heap with standard library \texttt{malloc} function and on the DEVICE heap with \texttt{cudaMalloc} CUDA API call. In CUDA we use the same pointer variables to represent the starting address of DEVICE system memory arrays and the start of HOST memory arrays but we need to be very careful not to use DEVICE pointers to access HOST memory and vice versa\footnote{In my view using vanilla pointers to represent DEVICE memory locations is one of the biggest missteps in CUDA as it leads to many programming mistakes when HOST and DEVICE pointers are confused.} In the last chapter we even used an informal naming convention where HOST pointers were named \texttt{h\_pointerName} and DEVICE pointers were named \texttt{c\_pointerName} precisely for this reason. 
+
+The physical DEVICE system memory is stored in 16 stacks of second generation high-bandwidth memory (HBM2) which is located in proximity to the DEVICE processor (see this \href{https://images.nvidia.com/content/technologies/volta/pdf/volta-v100-datasheet-update-us-1165301-r5.pdf}{datasheet}). Despite the close proximity of the HBM2 stacks to the DEVICE processor the physical limits on signal transmission and finite logic switching times means that a GPU core request to read data from DEVICE memory may take 375 GPU clock cycles (see Figure 3.2 of \cite{jia2018dissecting}). 
+
+With earlier generation GPUs the programmer was expected to compensate for high latency DEVICE memory accesses with careful overlap of data movement and computation combined with oversubscribing each core with more threads than thread processors. When I first started GPU programming it was common for  CUDA codes to run very slowly if they weren't carefully engineered to hide DEVICE memory latency. 
+
+Each subsequent GPU upgrade the memory system has become easier to work with, making it easier for GPU programmers to develop performant code. The NVIDIA V100 GPU for instance has a shared 6MB L2 cache that sits between the DEVICE system memory and the L1 caches associated with each GPU core. A data request from a DEVICE core first is considered by the L1 cache, if the requested data is not already loaded in the L1 cache the request is passed to the L2 cache, and if the data is not there then the request is passed through to the DEVICE system memory. If the requested data is found in one of the caches then the latency is reduced compared to if the request has to go all the way to the DEVICE system memory. The L1 cache has a hit latency of about 28 clock cycles, and the L2 cache has a hit latency of about 193 clock cycles. Thus if the data is cached it can reduce the time to read the data from 375 cycles to 193 cycles for an L2 hit or even 28 cycles for an L1 hit. Clearly an L1 hit is preferred, but we have to temper our expectations since each core only has 4 pools of 64KB storage in L1. Furthermore we have limited control over what data is retained in the L1 and L2 caches. 
+
+Fortunately, the unified L1 cache associated with each GPU core is actually split into an L1 cache (which we don't control closely) and a pool of shared memory accessible by all threads on the core (which we do control closely). In a CUDA kernel we can declare a stack array that is shared by all threads in a thread-block using the \texttt{\_\_shared\_\_} annotation. A shared array can then be used as a common scratch pad for all the threads in a thread-block, and is a much faster way to communicate data between threads than using the global DEVICE system memory and is more reliable than L1 since we explicitly manage which data is stored in the shared memory space.
+
+
+\section{CUDA vector reduction}
+
+In some regards the CUDA programming model and GPU architecture is very similar to programming CPUs with OpenMP. Both are built on a shared memory model with all threads able to access GPU system memory with CUDA or CPU system memory with OpenMP. In the following we show seven different implementations for performing a reduction operation on an array of doubles located in the shared DEVICE system memory. After discussing each of the implementations we give a summary of their performance in Section \ref{CUDAreductionPerformance.sec}.
+
+
+\subsection{Kernel  V1: single thread}
+
+We start really basic and implement the sum reduction
+\[
+s = \sum\limits_{m=0}^{N} a_m,
+\]
+assuming only one thread and one thread-block. The following gives the most basic implementation in a CUDA kernel one could think of.
+\begin{minted}{c}
+// see L26/lectureCodes/vectorReductions.cu
+// sum reduction using one thread on GPU
+__global__ void reductionKernelV1(int N, double *c_a, double *c_suma){
+
+  c_suma[0] = 0;
+  for(int m=0;m<N;++m)
+    c_suma[0] += c_a[m];
+
+}
+\end{minted}
+The only thing that gives this away as CUDA code is that the kernel is annotated with \texttt{\_\_global\_\_}. We do not expect this code to perform very well as the single thread will stall for about 400 clock cycles every time it requests data from global DEVICE memory.
+
+{\bf Note}: this is a really na\"{i}ve implementation as we keep incrementing a memory location in global DEVICE memory.
+
+We created a HOST function for each of the seven kernels that specifies the thread grid and uses CUDA event timing to time how long the kernel takes to execute. We include just the V1 launch and timing function here for illustrative purposes.
+
+\begin{minted}{c}
+void timeKernelV1(int N, double *c_a, double *c_suma, double *h_suma, double *elapsed){
+
+  // 1. create events
+  cudaEvent_t start, end;
+  cudaEventCreate(&start);
+  cudaEventCreate(&end);
+
+  // 2. record start event
+  cudaEventRecord(start);
+
+  // 3. launch CUDA DEVICE kernel with one thread in one thread-block
+  reductionKernelV1 <<< 1,1 >>> (N, c_a, c_suma);
+
+  // 4. insert end record event in stream
+  cudaEventRecord(end);
+
+  // 8. copy data from DEVICE array to HOST array
+  cudaMemcpy(h_suma, c_suma, 1*sizeof(double), cudaMemcpyDeviceToHost);
+
+  // 9. print out elapsed time
+  float felapsed;
+  cudaEventSynchronize(end);
+  cudaEventElapsedTime(&felapsed, start, end);
+  *elapsed = felapsed/1000.; // convert to seconds
+
+}
+\end{minted}
+
+For subsequent kernel launchers we specify sufficient threads with the thread grid as described in the description of the kernel. 
+
+\subsection{Kernel  V2: single thread with local accumulator}
+
+The V1 reduction code unnecessarily kept incrementing a global DEVICE memory location which will incur extra latencies even if that variable is cached in L1 memory. We rectify that in the V2 kernel by using a local stack variable for the single thread.
+
+\begin{minted}{c}
+// one thread with local stack variable for accumulator
+__global__ void reductionKernelV2(int N, double *c_a, double *c_suma){
+
+  double res = 0;
+
+  for(int m=0;m<N;++m)
+    res += c_a[m];
+
+  c_suma[0] = res;
+}
+\end{minted}
+This may improve the overall performance by reducing cache accesses, but still cannot exercise more than a fraction of the overall memory bandwidth of the GPU. By requesting one double (8 bytes, so 64 bits) at a time we are chronically under utilizing the wide memory bus which on the NVIDIA V100 is 4096 bits wide. This combined with only using one thread on one core with no oversubscription of the GPU cores will make this kernel still very slow.
+
+\subsection{Kernel  V3: $N$ threads but with race conditions}
+
+To increase the number of threads we can choose to use $N$ threads and only for demonstration purposes we show what happens when they all try to accumulate to a single accumulation variable.
+
+\begin{minted}{c}
+// BAD CODE: reduction kernel with N threads, but prone to read-write race conflicts                      
+__global__ void reductionKernelV3(int N, double *c_a, double *c_suma){
+
+  int t = threadIdx.x;
+  int b = blockIdx.x;
+  int B = blockDim.x;
+
+  int n = t + b*B;
+  if(n<N){
+    // dangerous: will cause read-write race conflicts  
+    c_suma[0] += c_a[n];
+  }
+}
+\end{minted}
+This kernel will actually get the wrong answer when multiple threads read the accumulator, increment it, and then overwrite the increments from other threads that happened between read and write.
+
+\subsection{Kernel  V4: $N$ threads using uninterruptible atomic adds}
+
+One way to fix the read-write race conditions that arise in kernel V3 is to use the protected CUDA \texttt{atomicAdd} function. This will guarantee that incrementing of the accumulator will happen without being interrupted by other threads.
+
+\begin{minted}{c}
+__global__ void reductionKernelV4(int N, double *c_a, double *c_suma){
+
+  int t = threadIdx.x;
+  int b = blockIdx.x;
+  int B = blockDim.x;
+
+  int n = t + b*B;
+  if(n<N){
+    double an = c_a[n];
+    // an uninterruptible increment   
+    atomicAdd(c_suma, an);
+  }
+}
+\end{minted}
+This kernel will be faster than the single thread variants but will be slower than the broken V3 kernel. It is easy to see why, because the \texttt{atomicAdd} operations although efficiently handled in the L1/L2 caches will still require serialization of the increments to guarantee that they will all be accounted for.
+
+The main bottleneck for the V4 kernel is the collision reconciliation that happens when $N$ threads all try to increment a single variable. One way to improve the performance of this code is to use multiple accumulators, we leave this to the reader as an exercise.
+
+\subsection{Kernel  V5: shared memory based thread-block based tree reduction}
+
+In kernel V4 we introduced one new aspect of CUDA kernel programming: an atomic addition operation that allows us to avoid read-write race conflicts when incrementing an accumulator in global DEVICE memory. The atomic operation is performed within the L1, L2, or global DEVICE memory. The latencies of atomic operations in either shared or global memory are given in Table 4.2 of \cite{jia2018dissecting}. The latency for an atomic operation range from 6 cycles when done in shared memory with no concurrency conflict to 36 cycles when done in global DEVICE memory with no conflict. The latency increase in both cases with increased contention, i.e. when more threads try to concurrently perform the atomic operation. Unfortunately the atomic operation has a significant potential overhead and in the above atomic based reduction the probability of  contention between many threads is very high.
+
+We can reduce the probability of contention between many threads when atomically incrementing a shared variable in several ways. One way is to use multiple accumulating variables in a similar manner that we used in OpenMP, for instance by creating an accumulator for each thread-block or reducing the number of threads that try to accumulate to a global DEVICE memory. A classic way to go about this is to perform a thread-block-wise reduction using a shared memory array for each thread-block. We will adapt the tree-wise reduction operation to coordinate a thread-block based partial reduction.
+
+Each thread-block can include up to 1024 threads in the contemporary version of CUDA. We can start the reduction by tasking each thread with loading a single value from DEVICE global memory and then storing it in a shared memory array. In the next stage we idle half of the threads, and the remaining 512 threads add two values from shared and store one value back to shared. We can then repeat this process of reducing the number of active threads and adding in a further 8 rounds until there is only one active thread that we then nominate to increment the global DEVICE accumulator using an atomic addition operation. Doing this we will significantly reduce the instances of contention in incrementing the global accumulator.
+
+There are two new CUDA kernel language options we need to implement this. The first is to declare a stack array within the kernel using the \texttt{\_\_local\_\_} annotation. This lets the CUDA compiler know that the stack array should be mapped into the unified L1/shared memory cache on the core and be made accessible to all threads in the thread-block. The next thing we need to do is make sure that every time any thread has written to the shared memory array then we introduce a synchronization barrier (also known as a memory fence) before any thread will read from that part of shared memory. The synchronization is important to flush all writes to the shared array before further threads read from the shared array, otherwise it is not guaranteed that the writes will proceed the reads.
+
+There is an excellent discussion of how to optimize shared memory based reductions in \href{https://developer.download.nvidia.com/assets/cuda/files/reduction.pdf}{this presentation} by Mark Harris of NVIDIA. However, his more aggressive optimizations for the reduction involved intra-SIMD synchronization. That is he relied on the 32-wide SIMD units concurrently executing instructions so that he could avoid using barriers during the last five binary tree reduction steps. Even then his optimized code neglected to declare that the shared memory be declared as ``volatile'' to force the compiler not to optimize away writes to the shared array. Finally, even if the shared array is declared as volatile in the latest GPU core architectures SIMD concurrency is no longer guaranteed. Thus several of his optimizations are considered brittle, although his reduction kernel  implementations can be brought up to date by introducing calls to warp synchronization commands.
+
+In the following we provide a simplified thread-block reduction kernel to illustrate how to use shared memory collaboratively between threads in a thread-block and how to synchronize between writes and reads to the shared memory array. 
+
+\begin{minted}{c}
+// use power of 2 number of threads per thread-block
+#define p_B 1024
+__global__ void reductionKernelV5(int N, double *c_a, double *c_suma){
+
+  __shared__ double s_a[p_B];
+
+  int t = threadIdx.x;
+  int b = blockIdx.x;
+  int B = blockDim.x;
+
+  int n = t + b*B;
+  double an = (n<N) ? c_a[n]:0;
+
+  s_a[t] = an;
+
+  int alive = p_B/2;
+  while(alive>0){
+
+    __syncthreads();
+
+    if(t<alive)
+      s_a[t] += s_a[t+alive];
+    alive /= 2;
+  }
+
+  if(t==0){
+    double an = s_a[0];
+    // an uninterruptible increment   
+    atomicAdd(c_suma, an);
+  }
+}
+
+\end{minted}
+
+{\bf Note}: in order to use the shared memory as a stack array in this code the compiler needs to know the size of the array at compilation time, and thus we used a preprocessor variable (\texttt{p\_B}) set to 1024 as the size for the array. We could have done some more artful things like for instance declaring this kernel as a C++ style templated kernel with say \texttt{p\_B} provided as a templated parameter.
+
+\begin{minted}{c}
+// use power of 2 number of threads per thread-block
+template <p_B>
+__global__ void reductionKernelV5(int N, float *c_a, float *c_suma){
+
+  ...;
+}
+
+...
+
+templatedSharedtomicVectorReductionKernel<1024> <<< G,B >>> (N, c_a, c_suma);
+\end{minted}
+
+\subsection{Kernel  V6: unrolling and warp based synchronization}
+
+In kernel V5 we deployed a manually managed shared memory cache as a local scratch pad so that the threads in a thread-block could collaboratively reduce 1024 array values to one. This required ten iterations of a tree reduction process. Unfortunately this meant that we need to introduce ten thread-block synchronizations in order to guarantee that the read and writes for each round of the tree reduction were completed by all threads before the next round. In kernel V6 we refine this strategy and group the 1024 threads into 32 groups of 32 threads to match the 32 wide SIMD width of the GPU core. We proceed as before but this time we do two rounds of 32 way reductions, first involving all 32 groups then in the second round only involving 32 threads in a single group. This allows us to replace the expensive \texttt{\_\_syncthreads()} calls which synchronize all the threads in the thread-block with calls to \texttt{\_\_syncwarp()} which only synchronizes threads in each ``warp'', i.e. in each group of 32 threads passing through the SIMD units collectively. 
+
+In order to perform the warp synchronized block reduction efficiently we also unroll the \texttt{while} loop, which in itself improves efficiency by removing some conditional branching. Finally we use a two-dimensional thread configuration of $32\times 32$ threads as this allows us to identify which warp a thread is in easily by using both \texttt{threadIdx.x} and \texttt{threadIdx.y}. The code for kernel V6 follows.
+
+\begin{minted}{c}
+// (32 threads in each SIMD group are synchronized via syncwarp)                                                                
+#define p_W 32
+
+__global__ void reductionKernelV6(int N, double *c_a, double *c_suma){
+
+  __shared__ double s_a[p_W][p_W];
+
+  int tx = threadIdx.x, ty = threadIdx.y;
+  int b  = blockIdx.x;
+  int BX = blockDim.x, BY = blockDim.y;
+
+  int n = tx + ty*BX + b*BX*BY;
+  double an = (n<N) ? c_a[n]:0;
+
+  // initial load
+  s_a[ty][tx] = an;
+  __syncwarp();
+
+  // first binary tree reduction  
+  {
+    if(tx<16) s_a[ty][tx] += s_a[ty][tx+16];
+    __syncwarp();
+
+    if(tx< 8) s_a[ty][tx] += s_a[ty][tx+8];
+    __syncwarp();
+
+    if(tx< 4) s_a[ty][tx] += s_a[ty][tx+4];
+    __syncwarp();
+
+    if(tx< 2) s_a[ty][tx] += s_a[ty][tx+2];
+    __syncwarp();
+
+    // special choice to avoid bank conflicts
+    if(tx< 1) s_a[ty][ty] = s_a[ty][0] + s_a[ty][1];
+  }
+
+  // synchronize all warps   
+  __syncthreads();
+
+  // second binary tree reduction using 0 warp
+  if(ty==0){
+    if( tx<16) s_a[0][tx] = s_a[tx][tx] + s_a[tx+16][tx+16];
+    __syncwarp();
+
+    if( tx< 8) s_a[0][tx] += s_a[0][tx+8];
+    __syncwarp();
+
+    if( tx< 4) s_a[0][tx] += s_a[0][tx+4];
+    __syncwarp();
+
+    if( tx< 2) s_a[0][tx] += s_a[0][tx+2];
+    __syncwarp();
+
+    if( tx< 1){
+      double res = s_a[0][0] + s_a[0][1];
+      // an uninterruptible increment   
+      atomicAdd(c_suma, res);
+    }
+  }
+}
+\end{minted}
+This may seem complicated but each step is carefully considered to minimize the number of expensive synchronizations.
+
+\subsection{Kernel  V7: multiple data loads per thread}
+
+The V6 kernel is in relatively good shape. It exploits the shared memory cache to reduce data movement, guarantees thread safety by exploiting atomic adds to increment the accumulator, reduces thread synchronization, unrolls an expensive \texttt{while} loop, with a couple of other performance sweeteners that are a little beyond the scope of this course. However, the block reduction is still relatively expensive incurring 9 warp synchronizations and a thread-block synchronization on top of several accesses to shared memory. 
+
+We reduce the number of times the thread-block reduction has to happen following Mark Harris' reduction optimization plan \cite{markidis2018nvidia}. The final step in the optimization is to reduce the number of thread-blocks by making each thread load more than one array value. This trades parallelism for lower operation count. 
+
+The kernel code for V7 is the same for V6 except for the initial data reading as follows
+
+\begin{minted}{c}
+// reduce number of tree reductions - each thread loads multiple values                                                         
+__global__ void reductionKernelV7(int N, double *c_a, double *c_suma){
+
+  __shared__ double s_a[p_W][p_W];
+
+  int tx = threadIdx.x;
+  int ty = threadIdx.y;
+  int b  = blockIdx.x;
+  int BX = blockDim.x;
+  int BY = blockDim.y;
+  int Nthreads = BX*BY*gridDim.x;
+
+  int n = tx + ty*BX + b*BX*BY;
+  double an = 0;
+
+  while(n<N){
+    an += c_a[n];
+    n += Nthreads;
+  }
+
+  // initial load   
+  s_a[ty][tx] = an;
+  __syncwarp();
+  ....; // same as V6
+}
+\end{minted}
+We then choose the number of thread-blocks so that the kernel loads say 2,3, or 4 values and perform some experiments to determine which yields the maximum throughput.
+
+\subsection{Reduction kernels: performance results}
+\label{CUDAreductionPerformance.sec}
+
+In the proceeding sections we have described a sequence of deliberate optimizations to improve the performance of a baseline na\"{i}ve reduction implementation. The results of running these different variants on an NVIDIA Titan V are shown in Table \ref{CUDAreductionsPerformanceTitanV.tab}. We see as expected that the V1 kernel achieves a tiny fraction of possible data throughput. Given that the NVIDIA Titan V has a \href{https://www.nvidia.com/en-us/titan/titan-v/}{manufacturer peak bandwidth of 652 GB/s} it is remarkable how poor the performance of the single thread V1 and V2 kernels is, even if the V2 does eeck out a little performance improvement over V1.
+
+The unprotected increments of the V3 kernel yield an incorrect result for the reduction as seen in the last column of Table \ref{CUDAreductionsPerformanceTitanV.tab} which should be 20 million not 196. 
+
+The atomic variant V4 does a very credible job achieving more than 50\% of the peak throughput. However, the results are much more impressive for the shared memory caching variants V5-V7. We see that the V6 and V7 variants in particular achieve more than 90\% of peak memory efficiency. This is remarkable given that the reduction process is inherently serializing, yet by careful kernel design we have been able to almost fully exploit the GPU memory bandwidth.
+
+\begin{table}[htbp!]
+    \centering
+    \begin{tabular}{c|l|c|c|c} \hline
+    Kernel V\# & Notes & Elapsed (s) & Loads (GB/s) & Result \\ \hline
+1 &  Serial & 1.78e+00 &   9.00e-02 &   20000000 \\ 
+2 & Improved serial &  6.19e-01 &   2.59e-01 &   20000000 \\ 
+3 & Read/write conflicts &  1.03e-03 &   1.55e+02 &   196 \\ 
+4 & All atomic adds &  4.74e-02 &   3.38e+00 &   20000000 \\ 
+5 & Shared tree \& atomic &  3.13e-04 &   5.11e+02 &   20000000 \\ 
+6 & V5 + reduced sync \& atomic &  2.64e-04 &   6.06e+02 &   20000000 \\ 
+7 & V6 + multi-loads per thread &  2.62e-04 &   6.10e+02 &   20000000 \\ 
+  \hline
+    \end{tabular}
+    \caption{CUDA sum reductions for 7 kernel implementations. Experiments conducted on an NVIDIA Titan V consumer GPU, involving reducing an array of 20 million doubles, each double set to 1.}
+    \label{CUDAreductionsPerformanceTitanV.tab}
+\end{table}
+
+We repeated the experiment on the ARC Cascades system using the following commands:
+
+\myvbox[mytermbg]{\# log on to cascades \\
+ssh pid@cascades1.arc.vt.edu \\ \\
+\# update course repo \\ 
+cd cmda3634 \\ 
+git pull \\ \\
+\# request slurm allocation with 1 GPU \\
+salloc --partition=v100\_dev\_q --nodes=1  --gres=gpu:1 -Acmda3634 -t1:0:0\\\\
+\# load CUDA compilers module\\
+module load cuda \\\\
+\# build reductions code\\
+cd L26/lectureCodes \\
+ nvcc -arch=sm\_70 -o vectorReductions vectorReductions.cu\\ \\
+\# run experiments to reduce 20 million long vector\\
+ ./vectorReductions 20000000}
+
+The results for this experiment are shown in Table \ref{CUDAreductionsPerformanceV100.tab}. Whereas the consumer grade NVIDIA Titan V has a manufacturer spec of 652 GB/s, the NVIDIA V100 GPU has more HBM2 memory modules and has a \href{https://www.nvidia.com/en-us/data-center/tesla-v100/}{claimed theoretical peak bandwidth of 900GB/s}.
+\begin{table}[htbp!]
+    \centering
+    \begin{tabular}{c|l|c|c|c} \hline
+    Kernel V\# & Notes & Elapsed (s) & Loads (GB/s) & Result \\ \hline
+ 1 &  Serial &  1.74e+00 &   9.20e-02 &   20000000 \\ 
+2 &  Improved serial & 6.12e-01 &   2.62e-01 &   20000000 \\ 
+3 &  Read/write conflicts & 9.99e-04 &   1.60e+02 &   208 \\ 
+4 &  All atomic adds &  4.57e-02 &   3.50e+00 &   20000000 \\ 
+5 &  Shared tree \& atomic &   2.98e-04 &   5.37e+02 &   20000000 \\ 
+6 &  V5 + reduced sync \& atomic & 2.27e-04 &   7.04e+02 &   20000000 \\ 
+7 &  V6 + multi-loads per thread & 1.90e-04 &   8.41e+02 &   20000000 \\ 
+  \hline
+    \end{tabular}
+    \caption{CUDA sum reductions for 7 kernel implementations. Experiments conducted on an NVIDIA V100 server grade GPU on cascades, involving reducing an array of 20 million doubles, each double set to 1.}
+    \label{CUDAreductionsPerformanceV100.tab}
+\end{table}
+
+ The V100 results have a similar trend to the Titan V, however the V7 kernel optimizations reducing the number of thread-blocks yield a larger gain over V6. The V7 kernel achieves a data load throughput of 841 GB/s. This is a phenomenal 93\% of peak performance ! Thus there really is almost no penalty in performing a reduction on a GPU as it can be done at the same throughput as reading from the array.
+ 
+ \printbibliography[heading=subbibliography]

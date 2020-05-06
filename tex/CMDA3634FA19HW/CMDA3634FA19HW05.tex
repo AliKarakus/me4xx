@@ -1,0 +1,47 @@
+
+\subsection*{Pledged assignment}
+This assignment is ``pledged.''
+You can talk to anyone about \texttt{gcc} and \LaTeX{},
+but you may not get help from other students on the coding portion.
+You can talk to the course instructors and the CMDA computing consultants (\href{https://www.ais.science.vt.edu/cmda/our-program/cmdacomputingconsultants.html}{information here}).
+
+\vspace{8pt}\noindent At the top of your assignment, you will write
+\begin{center}
+``I have neither given nor received unauthorized assistance on this assignment.''
+\end{center}
+
+%NO CODE in assignment statement
+
+\subsection*{Instructions}
+In this assignment you will investigate a basic difference between the real numbers ($\mathbb R$) and floating-point numbers by considering the sequence of numbers described by
+    \begin{align}
+        a_0&=\frac13,\\
+        a_{n+1}&=4a_n-1. \label{recur.eqn}
+    \end{align}
+    
+\begin{enumerate}
+    \item[Q1:] (5pts) What is $a_{50}$ in exact arithmetic? Can you write down what $a_n$ is for all $n$ if the recurrence is evaluated with exact arithmetic?
+    \item[Q2:] (10pts) Now consider the sequence of numbers $\{a_n\}$ that are obtained when using finite precision floating point arithmetic.
+    
+    Write a C program that uses single precision \texttt{float} variables to evaluate the Equation \ref{recur.eqn} to obtain $a_0,\dots,a_{50}$ and print this sequence of numbers to the terminal to 15 significant digits.
+   
+    \item[Q3:] (5pts) Create a new implementation of Q2 that uses double precision \texttt{double} type variables. 
+    \item[Q4:] (5pts) Explain why $a_{50}$ found in Q2 and Q3 is so different from your answer in Q1.
+    Use what you know about how computers store floating point variables.
+\end{enumerate}
+
+\subsection*{Submission}
+\begin{itemize}
+    \item[Q5:] (5pts) Include the following in your \LaTeX{} typeset report:
+    \begin{enumerate}
+        \item Your C code formatted using the \texttt{minted} environment.
+        \item Your responses to the above questions. 
+        \item The output of your computer programs, nicely formatted.
+    \end{enumerate}
+ 
+    Submit your assignment as follows:
+    \begin{itemize}
+    \item Upload your PDF and tex files to Canvas.
+    \item Submit the C source files from Q2 an Q3 by pushing them to your git repository on \href{code.vt.edu}{code.vt.edu}.
+    \end{itemize}
+\end{itemize}
